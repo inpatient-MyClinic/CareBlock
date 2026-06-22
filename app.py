@@ -8,6 +8,9 @@ from datetime import datetime
 from flask import Flask, request, jsonify, send_file, g
 
 app = Flask(__name__)
+
+from doctor_onboarding import register_doctor_onboarding
+register_doctor_onboarding(app)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB = os.path.join(BASE_DIR, 'careblock.db')
 
