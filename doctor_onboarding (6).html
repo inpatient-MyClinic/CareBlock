@@ -1,0 +1,2338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Clinic — Doctor Onboarding</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0a2a5e; --navy2:#10366f; --blue:#1c5aa8; --blue-l:#2f74c7;
+  --sky:#5fa8e6; --ink:#0c1f3d; --slate:#5a6b85; --line:#e3e9f2;
+  --bg:#eef3f9; --card:#ffffff; --teal:#17b7a6; --teal-d:#0f9488;
+  --ok:#16a34a; --warn:#d97706; --red:#e23b4e; --soft:#f4f7fc;
+  --grad:linear-gradient(135deg,#0a2a5e 0%,#1c5aa8 55%,#2f74c7 100%);
+  --grad-soft:linear-gradient(135deg,#11407f 0%,#2f74c7 100%);
+  --shadow:0 10px 40px -12px rgba(10,42,94,.28);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Sora',system-ui,sans-serif;background:var(--bg);color:var(--ink);
+  background-image:radial-gradient(circle at 12% 8%,rgba(47,116,199,.07),transparent 42%),radial-gradient(circle at 90% 0%,rgba(23,183,166,.06),transparent 38%);
+  min-height:100vh;-webkit-font-smoothing:antialiased}
+.ar{font-family:'Tajawal',sans-serif;direction:rtl}
+button{font-family:inherit;cursor:pointer;border:none}
+input,select,textarea{font-family:inherit}
+
+/* ---- top bar ---- */
+.topbar{background:var(--grad);color:#fff;padding:0 22px;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:60;box-shadow:0 6px 24px -10px rgba(10,42,94,.6)}
+.brand{display:flex;align-items:center;gap:12px}
+.logo-mark{width:38px;height:38px;border-radius:11px;background:#fff;display:grid;place-items:center;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.logo-mark svg{width:24px;height:24px}
+.brand-txt b{font-size:18px;font-weight:800;letter-spacing:.3px;display:block;line-height:1}
+.brand-txt span{font-size:11px;opacity:.8;font-weight:500;letter-spacing:1px}
+.brand-ar{font-family:'Tajawal';font-weight:800;font-size:17px}
+.mode-toggle{display:flex;background:rgba(255,255,255,.14);border-radius:12px;padding:4px;gap:3px}
+.mode-toggle button{background:transparent;color:#dce8f7;padding:8px 18px;border-radius:9px;font-weight:600;font-size:13px;transition:.2s}
+.mode-toggle button.active{background:#fff;color:var(--navy)}
+
+.live-pill{display:flex;align-items:center;gap:6px;font-size:11px;opacity:.85}
+.dot{width:8px;height:8px;border-radius:50%;background:#34d399;box-shadow:0 0 0 0 rgba(52,211,153,.7);animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(52,211,153,.6)}70%{box-shadow:0 0 0 7px rgba(52,211,153,0)}100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}}
+
+.wrap{max-width:1180px;margin:0 auto;padding:26px 18px 80px}
+.page-head{text-align:center;margin:10px 0 26px}
+.page-head h1{font-size:30px;font-weight:800;color:var(--navy);letter-spacing:-.5px}
+.page-head p{color:var(--slate);font-size:14px;margin-top:6px}
+
+/* layout: form + sticky preview */
+.builder{display:grid;grid-template-columns:1fr 380px;gap:24px;align-items:start}
+@media(max-width:960px){.builder{grid-template-columns:1fr}.preview-col{position:static!important}}
+
+.step{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px 22px;margin-bottom:18px;box-shadow:var(--shadow)}
+.step-h{display:flex;align-items:center;gap:9px;font-size:12px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--teal-d);margin-bottom:16px;padding-bottom:12px;border-bottom:1px dashed var(--line)}
+.step-h .num{width:24px;height:24px;border-radius:8px;background:var(--grad);color:#fff;display:grid;place-items:center;font-size:12px}
+label.fl{display:block;font-size:12px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--slate);margin:0 0 7px}
+label.fl .req{color:var(--red)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+.row.one{grid-template-columns:1fr}
+.row.three{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:620px){.row,.row.three{grid-template-columns:1fr}}
+.field{margin-bottom:16px}
+input[type=text],input[type=tel],input[type=date],input[type=month],select,textarea{
+  width:100%;padding:12px 13px;border:1.5px solid var(--line);border-radius:11px;font-size:14px;background:#fdfeff;color:var(--ink);transition:.16s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue-l);box-shadow:0 0 0 4px rgba(47,116,199,.12);background:#fff}
+.with-trans{position:relative}
+.with-trans input{padding-right:42px}
+.trans-btn{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:8px;background:var(--soft);display:grid;place-items:center;font-size:15px;color:var(--blue)}
+.trans-btn:hover{background:#e3edf9}
+.trans-btn.spin{animation:rot .8s linear infinite}
+@keyframes rot{to{transform:translateY(-50%) rotate(360deg)}}
+.hint{font-size:11.5px;color:var(--slate);margin-top:5px}
+
+/* choice cards / chips */
+.choices{display:grid;gap:11px}
+.choices.c2{grid-template-columns:1fr 1fr}
+.choices.c4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:620px){.choices.c4{grid-template-columns:1fr 1fr}}
+.choice{border:1.5px solid var(--line);border-radius:13px;padding:14px;background:#fdfeff;text-align:center;transition:.16s;position:relative}
+.choice:hover{border-color:var(--sky)}
+.choice.sel{border-color:var(--blue);background:linear-gradient(135deg,#eef5ff,#e1edfc);box-shadow:0 4px 14px -6px rgba(28,90,168,.4)}
+.choice .ic{font-size:22px;display:block;margin-bottom:6px}
+.choice b{font-size:14px;color:var(--navy);display:block}
+.choice small{font-size:11px;color:var(--slate)}
+.choice.sel::after{content:'✓';position:absolute;top:7px;right:9px;color:var(--blue);font-weight:800;font-size:13px}
+
+.chips{display:flex;flex-wrap:wrap;gap:9px}
+.chip{border:1.5px solid var(--line);background:#fdfeff;border-radius:999px;padding:9px 15px;font-size:13px;color:var(--navy);font-weight:500;transition:.15s;display:flex;align-items:center;gap:7px}
+.chip:hover{border-color:var(--sky)}
+.chip.sel{background:var(--grad);color:#fff;border-color:transparent}
+.chip .ar{font-size:12px;opacity:.85}
+
+/* searchable specialty */
+.combo{position:relative}
+.combo-list{position:absolute;top:calc(100% + 6px);left:0;right:0;background:#fff;border:1.5px solid var(--line);border-radius:13px;box-shadow:0 18px 40px -14px rgba(10,42,94,.35);max-height:280px;overflow:auto;z-index:40;display:none}
+.combo-list.open{display:block}
+.combo-opt{padding:11px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid #f1f5fb}
+.combo-opt:hover,.combo-opt.hi{background:#eef5ff}
+.combo-opt .en{font-weight:600;font-size:14px}
+.combo-opt .ar{color:var(--slate);font-size:13px}
+.combo-empty{padding:14px;color:var(--slate);font-size:13px;text-align:center}
+
+/* credentials builder */
+.cred-row{display:grid;grid-template-columns:1.1fr 1fr 1.4fr auto;gap:9px;margin-bottom:10px;align-items:center}
+@media(max-width:620px){.cred-row{grid-template-columns:1fr 1fr}}
+.cred-row .del{width:38px;height:42px;border-radius:10px;background:#fdeaec;color:var(--red);font-size:18px;display:grid;place-items:center}
+.cred-row .del:hover{background:#fbd5da}
+.addbtn{background:var(--soft);color:var(--blue);border:1.5px dashed var(--sky);border-radius:11px;padding:11px;font-weight:600;font-size:13px;width:100%;margin-top:4px}
+.addbtn:hover{background:#e6f0fb}
+
+.cond-banner{background:linear-gradient(135deg,#e8f7f4,#dcf2ee);border:1.5px solid #b6e6df;border-radius:14px;padding:14px 16px;margin-bottom:18px;display:flex;gap:11px;align-items:flex-start}
+.cond-banner b{color:var(--teal-d);font-size:13px}
+.cond-banner small{color:#3c8a80;font-size:12px}
+
+.submit-bar{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px}
+.btn{padding:14px 26px;border-radius:13px;font-weight:700;font-size:15px;display:inline-flex;align-items:center;gap:9px;transition:.18s}
+.btn-primary{background:var(--grad);color:#fff;box-shadow:0 10px 26px -10px rgba(28,90,168,.7)}
+.btn-primary:hover{transform:translateY(-2px)}
+.btn-ghost{background:#fff;color:var(--navy);border:1.5px solid var(--line)}
+.btn-ghost:hover{border-color:var(--sky)}
+.btn-sm{padding:9px 15px;font-size:13px;border-radius:10px}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+/* photo upload */
+.photo-up{border:2px dashed var(--sky);border-radius:14px;padding:18px;text-align:center;background:var(--soft);cursor:pointer;transition:.15s}
+.photo-up:hover{background:#e9f2fc}
+.photo-up.has{padding:10px}
+.photo-up img{max-height:150px;border-radius:10px}
+
+/* ===== THE CARD ===== */
+.preview-col{position:sticky;top:84px}
+.preview-label{font-size:12px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--teal-d);margin-bottom:12px;text-align:center}
+.card-scale{display:flex;justify-content:center}
+.doc-card{width:380px;background:#0a2a5e;border-radius:22px;overflow:hidden;box-shadow:0 24px 64px -20px rgba(10,42,94,.55);position:relative;font-family:'Sora'}
+/* upper light zone: logo + photo + name, fading to light blue at the seam */
+.dc-upper{background:linear-gradient(180deg,#edf1f6 0%,#e9eff5 48%,#dde7f3 68%,#8fb2de 100%);padding:16px 0 0;text-align:center}
+.dc-logo{display:inline-flex;align-items:center;gap:8px;background:#0a2a5e;padding:8px 16px;border-radius:13px;margin-bottom:14px;box-shadow:0 6px 16px -6px rgba(10,42,94,.5)}
+.dc-logo .m{width:22px;height:22px;border-radius:6px;background:#fff;display:grid;place-items:center}
+.dc-logo .m svg{width:14px;height:14px}
+.dc-logo b{color:#fff;font-weight:800;font-size:14px;letter-spacing:.3px}
+.dc-logo .ar{color:#bcd4ef;font-weight:700;font-size:13px}
+.dc-photo-wrap{position:relative;margin:0 18px;border-radius:14px;overflow:hidden;background:linear-gradient(160deg,#bcd3ee 0%,#2f5fa0 46%,#0a2a5e 100%);height:300px;box-shadow:0 10px 26px -10px rgba(10,42,94,.5)}
+.dc-photo-wrap img{width:100%;height:100%;object-fit:cover;object-position:top center}
+.dc-photo-ph{width:100%;height:100%;display:grid;place-items:center;color:rgba(255,255,255,.55)}
+.dc-loc{position:absolute;top:16px;right:0;background:rgba(255,255,255,.93);padding:7px 13px 7px 15px;border-radius:18px 0 0 18px;text-align:right;backdrop-filter:blur(4px);box-shadow:-2px 2px 8px -3px rgba(0,0,0,.2)}
+.dc-loc .ar{color:#0a2a5e;font-weight:700;font-size:11px;line-height:1.35}
+.dc-loc .en{color:#5a6b85;font-size:8px;font-weight:500;letter-spacing:.2px}
+.dc-name{padding:15px 16px 26px}
+.dc-name-ar{font-family:'Tajawal';font-weight:800;font-size:24px;color:#0a2a5e;line-height:1.12}
+.dc-name-en{font-family:'Sora';font-weight:800;font-size:21px;color:#15539e;letter-spacing:.3px;margin-top:1px}
+/* lower blue zone: specialty + credentials, continuing the seam color down to navy */
+.dc-lower{background:linear-gradient(180deg,#8fb2de 0%,#3866a8 17%,#1a4a8a 50%,#0a2a5e 100%);padding:16px 22px 24px;text-align:center;color:#fff}
+.dc-spec{margin-top:2px}
+.dc-spec .ar{font-family:'Tajawal';font-weight:700;font-size:15px;line-height:1.45;color:#fff}
+.dc-spec .en{font-size:11.5px;font-weight:500;color:#dbe9f8;line-height:1.45;margin-top:3px}
+.dc-creds{margin-top:13px}
+.dc-creds .ar{font-family:'Tajawal';font-weight:500;font-size:11px;color:#d3e2f5;line-height:1.8}
+.dc-creds .en{font-size:9px;color:#a9c4e4;line-height:1.65;margin-top:5px;letter-spacing:.1px}
+
+/* ===== ADMIN ===== */
+.admin-lock{max-width:380px;margin:60px auto;background:#fff;border-radius:18px;padding:34px;box-shadow:var(--shadow);text-align:center;border:1px solid var(--line)}
+.admin-lock h2{color:var(--navy);margin-bottom:6px}
+.admin-lock p{color:var(--slate);font-size:13px;margin-bottom:18px}
+.tabs{display:flex;gap:6px;background:#fff;border:1px solid var(--line);border-radius:13px;padding:5px;margin-bottom:20px;box-shadow:var(--shadow);flex-wrap:wrap}
+.tabs button{flex:1;min-width:120px;padding:11px;border-radius:9px;background:transparent;color:var(--slate);font-weight:600;font-size:13px;transition:.15s}
+.tabs button.active{background:var(--grad);color:#fff}
+
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:16px;box-shadow:var(--shadow)}
+.filters .fld{display:flex;flex-direction:column;gap:5px}
+.filters label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--slate)}
+.filters select,.filters input{padding:9px 11px;min-width:140px}
+.filters .grow{flex:1}
+
+.tbl-wrap{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:auto;box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;min-width:1100px;font-size:13px}
+thead th{background:var(--navy);color:#fff;padding:12px 13px;text-align:left;font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;position:sticky;top:0;white-space:nowrap}
+tbody td{padding:11px 13px;border-bottom:1px solid #eef2f8;vertical-align:middle}
+tbody tr:hover{background:#f7faff}
+.tag{display:inline-block;padding:3px 9px;border-radius:7px;font-size:11px;font-weight:600;background:#eef5ff;color:var(--blue)}
+.tag.tiny{font-size:10px;padding:2px 7px;margin:1px}
+.status-sel{padding:6px 8px;border-radius:8px;font-size:12px;font-weight:600;border:1.5px solid var(--line)}
+.status-sel.done{background:#e7f7ee;color:var(--ok);border-color:#bfe9cd}
+.status-sel.pend{background:#fff5e6;color:var(--warn);border-color:#ffe2b8}
+.stamp{font-size:10px;color:var(--slate);display:block;margin-top:3px}
+.act-btns{display:flex;gap:5px}
+.act-btns button{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-size:14px;background:var(--soft);transition:.15s}
+.act-btns button:hover{background:#e3edf9}
+.empty-state{text-align:center;padding:60px 20px;color:var(--slate)}
+.empty-state .big{font-size:46px;margin-bottom:12px}
+
+/* cards gallery */
+.gallery-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 16px;box-shadow:var(--shadow)}
+.gallery-bar .count{color:var(--slate);font-size:13px;margin-left:auto}
+.gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:22px}
+.set-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px;box-shadow:0 1px 2px rgba(15,30,61,.04)}
+.set-card summary{cursor:pointer;list-style:none;margin:-4px -6px 6px;padding:4px 6px;border-radius:8px}
+.set-card summary:hover{background:var(--soft)}
+.set-card summary::-webkit-details-marker{display:none}
+.set-card summary::after{content:"▸";float:right;font-size:13px;color:var(--slate);transition:transform .15s}
+.set-card[open] summary::after{transform:rotate(90deg)}
+.set-block{margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)}
+.set-block:first-of-type{border-top:0;padding-top:6px;margin-top:8px}
+.set-block h4{color:var(--navy);font-size:14px;margin-bottom:10px;font-weight:600}
+.set-item{display:flex;align-items:center;gap:10px;padding:6px 10px;background:var(--soft);border-radius:8px;margin-bottom:6px;font-size:13px}
+.set-item .en{font-weight:600;color:var(--navy);flex:1}
+.set-item .ar{color:var(--ink);direction:rtl;text-align:right;min-width:100px}
+.set-item .typ{font-size:11px;color:var(--slate);background:#fff;padding:2px 8px;border-radius:8px;border:1px solid var(--line)}
+.set-item .rm{background:none;border:0;color:var(--red);cursor:pointer;font-size:14px;padding:2px 6px}
+.set-item .rm:hover{background:#fce4e4;border-radius:6px}
+.gal-item{position:relative}
+.gal-check{position:absolute;top:10px;left:10px;z-index:5;width:26px;height:26px;border-radius:7px;background:#fff;border:2px solid var(--blue);display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.gal-check.on{background:var(--blue);color:#fff}
+.gal-item .doc-card{width:100%;cursor:pointer;transform:scale(1);transition:.2s}
+.gal-mini-actions{display:flex;gap:6px;margin-top:8px;justify-content:center}
+
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(10,25,50,.55);backdrop-filter:blur(3px);z-index:200;display:none;align-items:flex-start;justify-content:center;padding:30px 16px;overflow:auto}
+.modal.open{display:flex}
+.modal-box{background:#fff;border-radius:18px;max-width:560px;width:100%;padding:24px;box-shadow:0 30px 80px -20px rgba(0,0,0,.5);animation:pop .25s}
+@keyframes pop{from{transform:translateY(20px) scale(.97);opacity:0}to{transform:none;opacity:1}}
+.modal-box h3{color:var(--navy);margin-bottom:4px}
+.modal-x{float:right;width:32px;height:32px;border-radius:9px;background:var(--soft);font-size:18px}
+
+/* toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--navy);color:#fff;padding:13px 22px;border-radius:12px;font-size:14px;font-weight:600;box-shadow:0 14px 40px -10px rgba(0,0,0,.5);z-index:300;opacity:0;transition:.3s;display:flex;align-items:center;gap:9px}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.toast.err{background:var(--red)}
+
+.success-screen{text-align:center;padding:20px}
+.success-screen .big-check{width:78px;height:78px;border-radius:50%;background:var(--grad);color:#fff;font-size:40px;display:grid;place-items:center;margin:0 auto 16px;box-shadow:0 12px 30px -8px rgba(28,90,168,.6)}
+.hide{display:none!important}
+.shared-note{font-size:11px;color:var(--slate);text-align:center;margin-top:16px;opacity:.8}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="brand">
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 2L3 7v10l9 5 9-5V7l-9-5z" fill="#1c5aa8"/><path d="M12 7v10M7 12h10" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+    </div>
+    <div class="brand-txt">
+      <b>My Clinic <span class="brand-ar">عيادتي</span></b>
+      <span>DOCTOR ONBOARDING</span>
+    </div>
+  </div>
+  <div class="mode-toggle">
+    <button id="mDoctor" class="active" onclick="setMode('doctor')">👨‍⚕️ Doctor Form</button>
+    <button id="mAdmin" onclick="setMode('admin')">🔐 Admin</button>
+  </div>
+  <div class="live-pill"><span class="dot"></span> Live · Synced</div>
+</div>
+
+<!-- ============ DOCTOR VIEW ============ -->
+<div id="doctorView" class="wrap">
+  <div class="page-head">
+    <h1>Doctor Onboarding Form</h1>
+    <p>Complete your professional profile · Your introduction card is generated live as you type</p>
+  </div>
+
+  <!-- success screen (hidden until submit) -->
+  <div id="successScreen" class="hide">
+    <div class="step">
+      <div class="success-screen">
+        <div class="big-check">✓</div>
+        <h1 style="color:var(--navy);font-size:24px">Submitted successfully!</h1>
+        <p style="color:var(--slate);margin-top:6px">Thank you. Your profile has been saved to the team. Here is how your introduction card will look:</p>
+      </div>
+      <div id="successCardHolder" style="display:flex;justify-content:center;margin:24px 0"></div>
+      <div class="submit-bar" style="justify-content:center">
+        <button class="btn btn-primary" onclick="downloadMyCard()">⬇ Download my card (PDF)</button>
+        <button class="btn btn-ghost" onclick="resetForm()">＋ Submit another doctor</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="formArea" class="builder">
+    <!-- LEFT: FORM -->
+    <div class="form-col">
+
+      <!-- STEP 1 IDENTITY -->
+      <div class="step">
+        <div class="step-h"><span class="num">1</span> Personal & Contact</div>
+        <div class="row">
+          <div class="field">
+            <label class="fl">Full Name (English) <span class="req">*</span></label>
+            <input type="text" id="nameEn" placeholder="e.g. Wail Ahmed" oninput="liveCard()" onblur="nameToArabic(false)">
+          </div>
+          <div class="field">
+            <label class="fl">الاسم بالعربي <span class="req">*</span></label>
+            <div class="with-trans">
+              <input type="text" id="nameAr" class="ar" placeholder="يُكتب تلقائياً بالعربي" oninput="nameArEdited=true;liveCard()">
+              <button class="trans-btn" title="Transliterate from English" onclick="nameToArabic(true)">🔄</button>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label class="fl">Phone Number <span class="req">*</span></label>
+            <input type="tel" id="phone" placeholder="+966 5x xxx xxxx" oninput="liveCard()">
+          </div>
+          <div class="field">
+            <label class="fl">Title <span class="req">*</span></label>
+            <select id="title" onchange="liveCard()">
+              <option value="Dr.">Doctor (Dr.)</option>
+              <option value="Prof.">Professor (Prof.)</option>
+              <option value="">Other / None</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label class="fl">Professional Rank <span class="req">*</span></label>
+          <div class="chips" id="rankChips"></div>
+          <input type="text" id="rankOther" class="hide" placeholder="Specify rank…" style="margin-top:9px" oninput="liveCard()">
+        </div>
+      </div>
+
+      <!-- STEP 2 SPECIALTY -->
+      <div class="step">
+        <div class="step-h"><span class="num">2</span> Specialty</div>
+        <div class="field">
+          <label class="fl">Specialty Type <span class="req">*</span></label>
+          <div class="choices c2">
+            <div class="choice" data-stype="surgical" onclick="pickType('surgical')">
+              <span class="ic">🔪</span><b>Surgical</b><small>Operative specialties</small>
+            </div>
+            <div class="choice" data-stype="medical" onclick="pickType('medical')">
+              <span class="ic">💊</span><b>Medical / Non-surgical</b><small>Non-operative</small>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label class="fl">Specialty <span class="req">*</span> <span class="hint" style="text-transform:none;font-weight:400">— type to search</span></label>
+          <div class="combo">
+            <input type="text" id="specInput" placeholder="Select specialty type first…" autocomplete="off"
+              oninput="filterSpec(this.value)" onfocus="openSpec()" onkeydown="specKey(event)">
+            <div class="combo-list" id="specList"></div>
+          </div>
+          <input type="hidden" id="specEn"><input type="hidden" id="specAr">
+        </div>
+        <div class="row">
+          <div class="field">
+            <label class="fl">Subspecialty (English)</label>
+            <input type="text" id="subEn" placeholder="e.g. Reproductive Endocrinology" list="subDatalist" autocomplete="off" oninput="liveCard()" onblur="autoTranslate('subEn','subAr',this)">
+            <datalist id="subDatalist"></datalist>
+          </div>
+          <div class="field">
+            <label class="fl">التخصص الدقيق (عربي)</label>
+            <div class="with-trans">
+              <input type="text" id="subAr" class="ar" placeholder="ترجمة تلقائية" oninput="this.dataset.edited='1';liveCard()">
+              <button class="trans-btn" onclick="autoTranslate('subEn','subAr',null,this)">🔄</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 3 CREDENTIALS -->
+      <div class="step">
+        <div class="step-h"><span class="num">3</span> Credentials — Board / Fellowship / Certificate / Degree</div>
+        <p class="hint" style="margin-bottom:14px">Add each credential. Pick the issuing country/board, the type, and the field (type to search). You can add as many as you hold.</p>
+        <div id="credRows"></div>
+        <button class="addbtn" onclick="addCred()">＋ Add credential</button>
+      </div>
+
+      <!-- STEP 4 EXPERTISE & LOCATIONS -->
+      <div class="step">
+        <div class="step-h"><span class="num">4</span> Expertise, Locations & Age</div>
+        <div class="field">
+          <label class="fl">Areas of Expertise (English) <span class="hint" style="text-transform:none;font-weight:400">— select multiple, suggested by specialty · type to search or add your own</span></label>
+          <div class="chips" id="expChips" style="margin-bottom:9px"></div>
+          <div class="combo">
+            <input type="text" id="expInput" placeholder="Select specialty first…" autocomplete="off" oninput="filterExp(this.value)" onfocus="openExp()" onkeydown="expKey(event)">
+            <div class="combo-list" id="expList"></div>
+          </div>
+          <input type="hidden" id="expEn">
+        </div>
+        <div class="field">
+          <label class="fl">مجالات الخبرة (عربي) — ترجمة تلقائية <span class="hint" style="text-transform:none;font-weight:400">يمكن التعديل</span></label>
+          <div class="with-trans">
+            <input type="text" id="expAr" class="ar" placeholder="تُترجم تلقائياً من الاختيارات" oninput="this.dataset.edited='1';liveCard()">
+            <button class="trans-btn" title="Rebuild Arabic from selections" onclick="$('expAr').dataset.edited='';syncExpFields()">🔄</button>
+          </div>
+        </div>
+        <div class="field">
+          <label class="fl">Locations <span class="req">*</span> <span class="hint" style="text-transform:none;font-weight:400">— choose one or more</span></label>
+          <div class="chips" id="locChips"></div>
+        </div>
+        <div class="field">
+          <label class="fl">Patient's Age Group</label>
+          <input type="text" id="ageGroup" placeholder="e.g. From 14 years and above" oninput="liveCard()">
+        </div>
+      </div>
+
+      <!-- STEP 5 PRIVILEGES (conditional - surgical) -->
+      <div class="step hide" id="privStep">
+        <div class="step-h"><span class="num">5</span> Hospital Privileges</div>
+        <div class="cond-banner">
+          <span style="font-size:18px">🏥</span>
+          <div><b>Shown because you selected a Surgical specialty.</b><br>
+          <small>Do you hold operating privileges at contracted hospitals? Select all that apply.</small></div>
+        </div>
+        <div class="field">
+          <label class="fl">Do you have Doctor Privileges at Contracted Hospitals?</label>
+          <div class="choices c2" style="max-width:340px">
+            <div class="choice" data-priv="yes" onclick="setPrivYN('yes')"><b>Yes</b></div>
+            <div class="choice" data-priv="no" onclick="setPrivYN('no')"><b>No</b></div>
+          </div>
+        </div>
+        <div class="field hide" id="hospWrap">
+          <label class="fl">Select Hospitals — اختر المستشفيات</label>
+          <div class="chips" id="hospChips"></div>
+        </div>
+      </div>
+
+      <!-- STEP 6 PHOTO + CONSENT -->
+      <div class="step">
+        <div class="step-h"><span class="num">6</span> Photo & Consent</div>
+        <div class="field">
+          <label class="fl">Professional Photo (for your card)</label>
+          <label class="photo-up" id="photoUp">
+            <input type="file" accept="image/*" class="hide" onchange="loadPhoto(this)">
+            <div id="photoPrompt"><span style="font-size:28px">📷</span><br><b style="color:var(--navy)">Tap to upload photo</b><br><small class="hint">A clear portrait works best for the card</small></div>
+          </label>
+        </div>
+        <div class="field">
+          <label class="fl">Consent to marketing use <span class="req">*</span></label>
+          <p class="hint" style="margin-bottom:9px">Do you consent to My Clinic using your professional photos and videos for marketing and promotional purposes?</p>
+          <div class="choices c2" style="max-width:340px">
+            <div class="choice" data-consent="Yes" onclick="setConsent('Yes')"><b>✅ Yes</b></div>
+            <div class="choice" data-consent="No" onclick="setConsent('No')"><b>🚫 No</b></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="submit-bar">
+        <button class="btn btn-primary" id="submitBtn" onclick="submitForm()">✓ Submit profile</button>
+        <button class="btn btn-ghost" onclick="resetForm()">Clear form</button>
+      </div>
+      <p class="shared-note">🔒 Submissions are stored centrally so the My Clinic admin team can review and publish your card.</p>
+    </div>
+
+    <!-- RIGHT: LIVE CARD -->
+    <div class="preview-col">
+      <div class="preview-label">📇 Live Card Preview</div>
+      <div class="card-scale">
+        <div id="liveCardEl"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ADMIN VIEW ============ -->
+<div id="adminView" class="wrap hide">
+  <div id="adminLock" class="admin-lock">
+    <div style="font-size:40px;margin-bottom:8px">🔐</div>
+    <h2>Admin Access</h2>
+    <p>Enter the team passcode to view submissions and cards.</p>
+    <input type="password" id="adminPass" placeholder="Passcode" onkeydown="if(event.key==='Enter')tryLogin()" style="text-align:center;margin-bottom:12px">
+    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="tryLogin()">Unlock</button>
+    <p class="hint" style="margin-top:14px">Enter the team passcode provided by My Clinic admin.</p>
+  </div>
+
+  <div id="adminPanel" class="hide">
+    <div class="page-head" style="margin-bottom:16px">
+      <h1>Admin Dashboard</h1>
+      <p>Review onboarding submissions, manage cards and publishing status</p>
+      <p id="dbStatus" class="hint" style="margin-top:6px"></p>
+      <button class="btn btn-ghost btn-sm" onclick="openDBModal()" style="margin-top:6px">⚙ Configure database</button>
+    </div>
+    <div class="tabs">
+      <button id="tabLog" class="active" onclick="setTab('log')">📋 Request Log</button>
+      <button id="tabCards" onclick="setTab('cards')">📇 Cards Gallery</button>
+      <button id="tabSettings" onclick="setTab('settings')">⚙ Settings</button>
+    </div>
+
+    <!-- LOG TAB -->
+    <div id="logTab">
+      <div class="filters">
+        <div class="fld"><label>Month</label><input type="month" id="fMonth" onchange="renderLog()"></div>
+        <div class="fld"><label>Exact Date</label><input type="date" id="fDate" onchange="renderLog()"></div>
+        <div class="fld"><label>Branch</label><select id="fBranch" onchange="renderLog()"></select></div>
+        <div class="fld"><label>Specialty</label><select id="fSpec" onchange="renderLog()"></select></div>
+        <div class="fld grow"></div>
+        <button class="btn btn-ghost btn-sm" onclick="clearFilters()">Clear</button>
+        <button class="btn btn-ghost btn-sm" onclick="refreshAdmin()">🔄 Refresh</button>
+        <button class="btn btn-primary btn-sm" onclick="exportExcel()">⬇ Export Excel</button>
+        <button class="btn btn-primary btn-sm" onclick="downloadFilteredPhotos()">🖼 Photos ZIP</button>
+      </div>
+      <div class="tbl-wrap">
+        <table id="logTable">
+          <thead><tr>
+            <th>Submitted</th><th>Doctor</th><th>Phone</th><th>Title / Rank</th><th>Specialty</th>
+            <th>Subspecialty</th><th>Credentials</th><th>Expertise</th><th>Locations</th>
+            <th>Age Group</th><th>Privileges</th><th>Consent</th>
+            <th>Application</th><th>Web Page</th><th>Parking Space</th><th>User Created</th><th>Actions</th>
+          </tr></thead>
+          <tbody id="logBody"></tbody>
+        </table>
+      </div>
+      <div id="logEmpty" class="empty-state hide"><div class="big">📭</div><b>No submissions yet</b><p>Doctor profiles will appear here once submitted.</p></div>
+    </div>
+
+    <!-- CARDS TAB -->
+    <div id="cardsTab" class="hide">
+      <div class="gallery-bar">
+        <button class="btn btn-ghost btn-sm" onclick="selectAllCards(true)">Select all</button>
+        <button class="btn btn-ghost btn-sm" onclick="selectAllCards(false)">Clear</button>
+        <button class="btn btn-primary btn-sm" id="bulkBtn" onclick="downloadSelected()">⬇ Cards (PDF)</button>
+        <button class="btn btn-primary btn-sm" id="bulkPhotoBtn" onclick="downloadSelectedPhotos()">🖼 Photos (JPG / ZIP)</button>
+        <span class="count" id="galCount"></span>
+      </div>
+      <div class="gal-grid" id="galGrid"></div>
+      <div id="galEmpty" class="empty-state hide"><div class="big">🖼️</div><b>No cards yet</b></div>
+    </div>
+
+    <!-- SETTINGS TAB -->
+    <div id="settingsTab" class="hide">
+      <div style="margin-bottom:18px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" onclick="saveAppSettingsFromUI()">💾 Save settings</button>
+        <button class="btn btn-ghost btn-sm" onclick="reloadAppSettings()">🔄 Reload</button>
+        <button class="btn btn-ghost btn-sm" onclick="resetAppSettings()" style="color:var(--red)">↺ Reset to defaults</button>
+        <span class="hint" id="setStatus" style="align-self:center;margin-left:8px"></span>
+      </div>
+
+      <!-- SECTION 1 — EMAILS -->
+      <details class="set-card" open>
+        <summary><h3 style="display:inline">✉️ 1. Email Templates</h3></summary>
+        <p class="hint" style="margin-bottom:12px">
+          Edit the two automatic emails. Use these placeholders inside the subject or body — they'll be replaced with the real doctor's info when the email is sent:
+          <code>{fullName}</code> <code>{phone}</code> <code>{specialty}</code> <code>{location}</code>
+        </p>
+
+        <div class="set-block">
+          <h4>HR → IT (sent when Application = Done)</h4>
+          <div class="field"><label class="fl">To</label><input type="text" id="setHrTo" placeholder="itsupport@myclinic.com.sa"></div>
+          <div class="field"><label class="fl">CC <span class="hint" style="text-transform:none;font-weight:400">— separate multiple with commas</span></label><input type="text" id="setHrCc" placeholder="(optional)"></div>
+          <div class="field"><label class="fl">Subject</label><input type="text" id="setHrSubject"></div>
+          <div class="field"><label class="fl">Body</label><textarea id="setHrBody" rows="9" style="font-family:inherit;width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:9px;resize:vertical"></textarea></div>
+        </div>
+
+        <div class="set-block">
+          <h4>Admin → Clinical Operations (sent when User Created = Yes)</h4>
+          <div class="field"><label class="fl">To</label><input type="text" id="setOpsTo" placeholder="ClinicalOperations@myclinic.com.sa"></div>
+          <div class="field"><label class="fl">CC <span class="hint" style="text-transform:none;font-weight:400">— separate multiple with commas</span></label><input type="text" id="setOpsCc" placeholder="(optional)"></div>
+          <div class="field"><label class="fl">Subject</label><input type="text" id="setOpsSubject"></div>
+          <div class="field"><label class="fl">Body</label><textarea id="setOpsBody" rows="8" style="font-family:inherit;width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:9px;resize:vertical"></textarea></div>
+        </div>
+      </details>
+
+      <!-- SECTION 2 — SUBSPECIALTIES -->
+      <details class="set-card">
+        <summary><h3 style="display:inline">🩺 2. Subspecialties</h3></summary>
+        <p class="hint" style="margin-bottom:12px">Add custom subspecialties under any existing specialty. They'll appear in the doctor form alongside the built-in subspecialties.</p>
+
+        <div class="set-block">
+          <h4>Add a new subspecialty</h4>
+          <div class="field"><label class="fl">Under specialty</label>
+            <select id="addSubSpec"></select>
+          </div>
+          <div class="field"><label class="fl">Name (English)</label><input type="text" id="addSubEn" placeholder="e.g. Memory Disorders"></div>
+          <div class="field"><label class="fl">Name (Arabic)</label><input type="text" id="addSubAr" class="ar" placeholder="e.g. اضطرابات الذاكرة (يتم اقتراحها تلقائيًا)"></div>
+          <button class="btn btn-primary btn-sm" onclick="addCustomSub()">➕ Add subspecialty</button>
+          <div style="margin-top:14px">
+            <b style="font-size:13px;color:var(--slate)">Custom subspecialties:</b>
+            <div id="customSubList" style="margin-top:8px"></div>
+          </div>
+        </div>
+      </details>
+    </div>
+  </div>
+</div>
+
+<!-- DB SETTINGS MODAL -->
+<div class="modal" id="dbModal">
+  <div class="modal-box" style="max-width:620px">
+    <button class="modal-x" onclick="closeDBModal()">✕</button>
+    <h3>🗄 Database Settings</h3>
+    <p class="hint" style="margin-bottom:12px">Connect a real database so all submissions are stored permanently.</p>
+
+    <div class="tabs" style="margin-bottom:14px">
+      <button id="dbtab_rail" class="active" onclick="setDBTab('rail')">🚄 Railway (recommended)</button>
+      <button id="dbtab_sb" onclick="setDBTab('sb')">🟢 Supabase</button>
+    </div>
+
+    <!-- Railway pane -->
+    <div id="dbpane_rail">
+      <div class="field"><label class="fl">Railway API URL</label>
+        <input type="text" id="cfg_rail" placeholder="https://your-app.up.railway.app" autocomplete="off"></div>
+    </div>
+
+    <!-- Supabase pane -->
+    <div id="dbpane_sb" class="hide">
+      <div class="field"><label class="fl">Supabase Project URL</label>
+        <input type="text" id="cfg_url" placeholder="https://abcdxyz.supabase.co" autocomplete="off"></div>
+      <div class="field"><label class="fl">Anon Public Key</label>
+        <input type="text" id="cfg_key" placeholder="eyJhbGciOi..." autocomplete="off"></div>
+    </div>
+
+    <div id="dbStatusBox" class="hint" style="background:var(--soft);padding:10px;border-radius:9px;margin:8px 0"></div>
+
+    <div class="submit-bar" style="margin-top:14px;flex-wrap:wrap;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="testDBConnection()">🔌 Test connection</button>
+      <button class="btn btn-primary btn-sm" onclick="saveDBSettings()">💾 Save &amp; Activate</button>
+      <button class="btn btn-ghost btn-sm" onclick="migrateLocalToCloud()">⬆ Migrate existing data</button>
+      <button class="btn btn-ghost btn-sm" onclick="disconnectDB()" style="color:var(--red)">❌ Disconnect</button>
+    </div>
+
+    <!-- Railway setup help -->
+    <div id="dbhelp_rail" class="hint" style="margin-top:16px;line-height:1.55">
+      <b>One-time Railway setup:</b><br>
+      1. In Railway → <b>New Project → Deploy from GitHub repo</b> using the supplied <code>server.js</code> + <code>package.json</code> (or upload them).<br>
+      2. In the same project → <b>+ New → Database → Postgres</b>. Railway auto-injects <code>DATABASE_URL</code>.<br>
+      3. Under the service → <b>Settings → Networking → Generate Domain</b>. Copy the URL (e.g. <code>https://your-app.up.railway.app</code>) into the field above.<br>
+      4. Click <b>🔌 Test connection</b> → <b>💾 Save &amp; Activate</b>.<br>
+      <span style="color:var(--slate)">The <code>doctors</code> table is created automatically on first start.</span>
+    </div>
+
+    <!-- Supabase setup help -->
+    <div id="dbhelp_sb" class="hint hide" style="margin-top:16px;line-height:1.55">
+      <b>One-time Supabase setup:</b><br>
+      1. Create a free project at <b>supabase.com</b>.<br>
+      2. In <b>SQL Editor</b>, run once:<br>
+      <code style="display:block;background:#0f1e3d;color:#bcd4ef;padding:11px;border-radius:8px;margin:6px 0;font-size:11px;white-space:pre;font-family:monospace;overflow:auto">create table doctors (id text primary key, created_at bigint, data jsonb);
+alter table doctors enable row level security;
+create policy "allow all" on doctors for all using (true) with check (true);</code>
+      3. <b>Settings → API</b> → copy the <b>Project URL</b> and <b>anon public</b> key above.
+    </div>
+  </div>
+</div>
+
+<!-- EMAIL PREVIEW MODAL -->
+<div class="modal" id="emailModal">
+  <div class="modal-box" style="max-width:640px">
+    <button class="modal-x" onclick="closeEmailModal()">✕</button>
+    <h3>📧 Email Preview — Open Clinic Request</h3>
+    <p class="hint" style="margin-bottom:14px">Below is the email that would be sent. <b>Nothing has been sent yet</b> — you can review it, copy it, or open it in your mail app.</p>
+
+    <div style="background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px">
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13px;margin-bottom:12px">
+        <div style="color:var(--slate);font-weight:600">To:</div><div id="em_to"></div>
+        <div style="color:var(--slate);font-weight:600">Subject:</div><div id="em_subject" style="font-weight:600;color:var(--navy)"></div>
+      </div>
+      <div style="border-top:1px dashed var(--line);padding-top:12px">
+        <pre id="em_body" style="font-family:inherit;font-size:13px;line-height:1.65;color:var(--ink);white-space:pre-wrap;margin:0"></pre>
+      </div>
+    </div>
+
+    <div class="submit-bar" style="margin-top:6px;flex-wrap:wrap;gap:8px">
+      <button class="btn btn-primary btn-sm" onclick="copyEmail()">📋 Copy email text</button>
+      <button class="btn btn-ghost btn-sm" onclick="openInMailApp()">✉️ Open in mail app</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeEmailModal()">Close (don't send)</button>
+    </div>
+    <p class="hint" style="margin-top:14px;font-size:11px;color:var(--slate)">
+      💡 <b>Why isn't this sending automatically?</b> Sending email from a browser app requires a mail server (SMTP) setup with credentials. Right now this is a preview-only feature — copy the text or open it in your mail client to send.
+    </p>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal" id="editModal">
+  <div class="modal-box">
+    <button class="modal-x" onclick="closeModal()">✕</button>
+    <h3 id="editTitle">Edit Doctor</h3>
+    <p class="hint" style="margin-bottom:16px">Update fields then save. Changes reflect on the card instantly.</p>
+    <div id="editFields"></div>
+    <div class="submit-bar" style="margin-top:18px">
+      <button class="btn btn-primary btn-sm" onclick="saveEdit()">Save changes</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- hidden render area for PDF capture -->
+<div id="pdfStage" style="position:fixed;left:-9999px;top:0"></div>
+
+<script>
+/* ============ DATA ============ */
+const SPECIALTIES=[
+ {en:'ENT',ar:'الأنف والأذن والحنجرة',type:'surgical'},
+ {en:'Cardiology',ar:'أمراض القلب',type:'medical'},
+ {en:'Dental',ar:'طب الأسنان',type:'both'},
+ {en:'Dermatology',ar:'الأمراض الجلدية',type:'medical'},
+ {en:'Endocrinology',ar:'الغدد الصماء',type:'medical'},
+ {en:'Family Medicine',ar:'طب الأسرة',type:'medical'},
+ {en:'Gastroenterology',ar:'أمراض الجهاز الهضمي',type:'medical'},
+ {en:'General Practice',ar:'الطب العام / الرعاية الأولية',type:'medical'},
+ {en:'Surgery',ar:'الجراحة',type:'surgical'},
+ {en:'Geriatric Medicine',ar:'طب الشيخوخة',type:'medical'},
+ {en:'Hematology',ar:'أمراض الدم',type:'medical'},
+ {en:'Internal Medicine',ar:'الطب الباطني',type:'medical'},
+ {en:'Nephrology',ar:'أمراض الكلى',type:'medical'},
+ {en:'Neurology',ar:'المخ والأعصاب',type:'medical'},
+ {en:'Nutrition',ar:'التغذية',type:'medical'},
+ {en:'Physiotherapy',ar:'العلاج الطبيعي',type:'medical'},
+ {en:'Obstetric and Gynecology',ar:'التوليد وأمراض النساء',type:'surgical'},
+ {en:'Ophthalmology',ar:'طب العيون',type:'surgical'},
+ {en:'Orthopedic',ar:'طب العظام',type:'surgical'},
+ {en:'Pediatric',ar:'طب الأطفال',type:'medical'},
+ {en:'Pulmonary',ar:'أمراض الرئة / الصدرية',type:'medical'},
+ {en:'Rheumatology',ar:'الروماتيزم والأمراض المناعية',type:'medical'},
+ {en:'Urology',ar:'المسالك البولية',type:'surgical'},
+ {en:'Podiatry',ar:'طب القدم',type:'surgical'},
+ {en:'Plastic Surgery',ar:'الجراحة التجميلية والترميمية',type:'surgical'},
+ {en:'Psychiatry',ar:'الطب النفسي',type:'medical'},
+ {en:'Psychology',ar:'علم النفس',type:'medical'},
+ {en:'Rehabilitation',ar:'الطب التأهيلي',type:'medical'},
+];
+const RANKS=['Specialist','Senior Specialist','Consultant','Other'];
+const LOCATIONS=[
+ {en:'Mohammadyah',ar:'المحمدية'},{en:'Safa',ar:'الصفا'},{en:'Tahlia',ar:'التحلية'},
+ {en:'Obhour',ar:'أبحر'},{en:'Dental Centre - Khaldyah',ar:'مركز الأسنان - الخالدية'},
+ {en:'Sahafah - Riyadh',ar:'الصحافة - الرياض'},{en:'PetroRabigh',ar:'بترورابغ'}
+];
+const HOSPITALS=['KCH','IMC','DSAH','Al Salama','DSFH','Erfan','EMC'];
+const BOARDS=[
+ {en:'Saudi',ar:'السعودي'},{en:'American',ar:'الأمريكي'},
+ {en:'Canadian',ar:'الكندي'},{en:'German',ar:'الألماني'},
+ {en:'Egyptian',ar:'المصري'},{en:'Arab',ar:'العربي'},
+ {en:'Royal College',ar:'الكلية الملكية'},
+ {en:'Other',ar:'أخرى'}
+];
+const CRED_TYPES=['Board','Fellowship','Certificate','Degree'];
+const ADMIN_PASS='3435';
+/* country adjective with Arabic gender: masculine for البورد, feminine for الزمالة/الشهادة */
+const COUNTRY_ADJ={
+ 'Saudi':{m:'السعودي',f:'السعودية'},
+ 'American':{m:'الأمريكي',f:'الأمريكية'},
+ 'Canadian':{m:'الكندي',f:'الكندية'},
+ 'German':{m:'الألماني',f:'الألمانية'},
+ 'Egyptian':{m:'المصري',f:'المصرية'},
+ 'Arab':{m:'العربي',f:'العربية'}
+};
+/* Normalize country to handle legacy values like "Saudi Board" saved before this change */
+function normCountry(s){ return (s||'').replace(/ Board$/,''); }
+
+/* Per-specialty subspecialties / fellowships  [English, Arabic] */
+const SUBS={
+ 'Orthopedic':[['Sports Medicine','طب الرياضة'],['Sports Injuries','إصابات الملاعب'],['Joint Replacement (Arthroplasty)','استبدال المفاصل'],['Spine Surgery','جراحة العمود الفقري'],['Hand Surgery','جراحة اليد'],['Foot & Ankle Surgery','جراحة القدم والكاحل'],['Shoulder & Elbow Surgery','جراحة الكتف والمرفق'],['Pediatric Orthopedics','عظام الأطفال'],['Orthopedic Trauma','إصابات وكسور العظام'],['Orthopedic Oncology','أورام العظام'],['Arthroscopy','جراحة المناظير المفصلية']],
+ 'Obstetric and Gynecology':[['Reproductive Endocrinology & Infertility','الغدد الصماء التناسلية والعقم'],['Maternal-Fetal Medicine','طب الأم والجنين'],['Gynecologic Oncology','أورام النساء'],['Urogynecology','مسالك النساء'],['IVF / Assisted Reproduction','أطفال الأنابيب والإخصاب المساعد'],['Minimally Invasive Gynecologic Surgery','جراحة النساء بالمنظار'],['High-Risk Pregnancy','الحمل عالي الخطورة']],
+ 'Cardiology':[['Interventional Cardiology','القسطرة العلاجية'],['Electrophysiology','كهربية القلب'],['Heart Failure','قصور القلب'],['Echocardiography','تخطيط صدى القلب'],['Pediatric Cardiology','قلب الأطفال'],['Preventive Cardiology','الوقاية من أمراض القلب'],['Adult Congenital Heart Disease','عيوب القلب الخلقية للبالغين']],
+ 'Pediatric':[['Pediatric Endocrinology','الغدد الصماء للأطفال'],['Neonatology','حديثي الولادة'],['Pediatric Cardiology','قلب الأطفال'],['Pediatric Neurology','مخ وأعصاب الأطفال'],['Pediatric Pulmonology','صدرية الأطفال'],['Pediatric Gastroenterology','الجهاز الهضمي للأطفال'],['Pediatric Nephrology','كلى الأطفال'],['Pediatric Hematology & Oncology','دم وأورام الأطفال'],['Pediatric Infectious Diseases','الأمراض المعدية للأطفال'],['Pediatric Intensive Care','العناية المركزة للأطفال'],['Pediatric Emergency','طوارئ الأطفال']],
+ 'ENT':[['Otology / Neurotology','جراحة الأذن'],['Rhinology & Sinus Surgery','جراحة الأنف والجيوب'],['Head & Neck Surgery','جراحة الرأس والرقبة'],['Laryngology','جراحة الحنجرة'],['Pediatric ENT','أنف وأذن وحنجرة الأطفال'],['Facial Plastic Surgery','جراحة تجميل الوجه'],['Cochlear Implant','زراعة القوقعة']],
+ 'Surgery':[['Laparoscopic Surgery','الجراحة بالمنظار'],['Bariatric Surgery','جراحة السمنة'],['Colorectal Surgery','جراحة القولون والمستقيم'],['Hepatobiliary Surgery','جراحة الكبد والقنوات المرارية'],['Surgical Oncology','جراحة الأورام'],['Breast Surgery','جراحة الثدي'],['Vascular Surgery','جراحة الأوعية الدموية'],['Pediatric Surgery','جراحة الأطفال'],['Endocrine Surgery','جراحة الغدد']],
+ 'Ophthalmology':[['Retina & Vitreous','الشبكية والجسم الزجاجي'],['Cornea & Refractive Surgery','القرنية وتصحيح النظر'],['Glaucoma','المياه الزرقاء'],['Cataract Surgery','جراحة المياه البيضاء'],['Pediatric Ophthalmology & Strabismus','عيون الأطفال والحول'],['Oculoplastic Surgery','تجميل العيون'],['Neuro-Ophthalmology','أعصاب العيون']],
+ 'Urology':[['Endourology & Stone Disease','مناظير المسالك والحصوات'],['Uro-Oncology','أورام المسالك البولية'],['Pediatric Urology','مسالك الأطفال'],['Andrology & Male Infertility','أمراض الذكورة والعقم'],['Female Urology','مسالك النساء'],['Renal Transplant','زراعة الكلى'],['Laparoscopic & Robotic Urology','جراحة المسالك بالمنظار والروبوت']],
+ 'Plastic Surgery':[['Aesthetic / Cosmetic Surgery','الجراحة التجميلية'],['Reconstructive Surgery','الجراحة الترميمية'],['Hand Surgery','جراحة اليد'],['Burn Surgery','جراحة الحروق'],['Craniofacial Surgery','جراحة الوجه والجمجمة'],['Microsurgery','الجراحة الميكروسكوبية']],
+ 'Podiatry':[['Foot & Ankle Surgery','جراحة القدم والكاحل'],['Diabetic Foot','القدم السكرية'],['Sports Podiatry','إصابات القدم الرياضية']],
+ 'Dental':[['Orthodontics','تقويم الأسنان'],['Endodontics','علاج الجذور'],['Periodontics','أمراض اللثة'],['Prosthodontics','التركيبات والتعويضات'],['Oral & Maxillofacial Surgery','جراحة الفم والوجه والفكين'],['Pediatric Dentistry','أسنان الأطفال'],['Dental Implants','زراعة الأسنان'],['Cosmetic Dentistry','تجميل الأسنان']],
+ 'Dermatology':[['Cosmetic Dermatology','الأمراض الجلدية التجميلية'],['Dermatologic Surgery','جراحة الجلدية'],['Pediatric Dermatology','جلدية الأطفال'],['Laser & Aesthetics','الليزر والتجميل'],['Hair Disorders','أمراض الشعر'],['Dermatopathology','باثولوجيا الجلد']],
+ 'Endocrinology':[['Diabetes','السكري'],['Thyroid Disorders','أمراض الغدة الدرقية'],['Reproductive Endocrinology','الغدد الصماء التناسلية'],['Pediatric Endocrinology','الغدد الصماء للأطفال'],['Obesity & Metabolism','السمنة والأيض'],['Bone & Mineral Disorders','أمراض العظام والمعادن']],
+ 'Gastroenterology':[['Hepatology','أمراض الكبد'],['Therapeutic Endoscopy','المناظير العلاجية'],['Inflammatory Bowel Disease','أمراض الأمعاء الالتهابية'],['Pancreatobiliary','البنكرياس والقنوات المرارية'],['Pediatric Gastroenterology','الجهاز الهضمي للأطفال']],
+ 'Neurology':[['Stroke','السكتة الدماغية'],['Epilepsy','الصرع'],['Movement Disorders','اضطرابات الحركة'],['Multiple Sclerosis','التصلب المتعدد'],['Neuromuscular Disorders','الأمراض العصبية العضلية'],['Headache Medicine','طب الصداع'],['Pediatric Neurology','أعصاب الأطفال']],
+ 'Internal Medicine':[['Infectious Diseases','الأمراض المعدية'],['Critical Care','العناية الحرجة'],['Hospital Medicine','طب المستشفيات'],['Geriatrics','طب الشيخوخة'],['Endocrinology','الغدد الصماء'],['Pulmonology','الأمراض الصدرية']],
+ 'Nephrology':[['Dialysis','الغسيل الكلوي'],['Kidney Transplant','زراعة الكلى'],['Glomerular Diseases','أمراض الكبيبات'],['Hypertension','ارتفاع ضغط الدم'],['Pediatric Nephrology','كلى الأطفال']],
+ 'Hematology':[['Hematologic Oncology','أورام الدم'],['Bone Marrow Transplant','زراعة نخاع العظم'],['Coagulation Disorders','اضطرابات التخثر'],['Benign Hematology','أمراض الدم الحميدة']],
+ 'Pulmonary':[['Interventional Pulmonology','الأمراض الصدرية التداخلية'],['Sleep Medicine','طب النوم'],['Critical Care','العناية الحرجة'],['Asthma & COPD','الربو والانسداد الرئوي'],['Interstitial Lung Disease','أمراض النسيج الرئوي']],
+ 'Rheumatology':[['Inflammatory Arthritis','التهاب المفاصل الالتهابي'],['Lupus & Connective Tissue','الذئبة وأمراض النسيج الضام'],['Vasculitis','التهاب الأوعية'],['Pediatric Rheumatology','روماتيزم الأطفال']],
+ 'Psychiatry':[['Child & Adolescent Psychiatry','الطب النفسي للأطفال والمراهقين'],['Addiction Psychiatry','طب نفس الإدمان'],['Geriatric Psychiatry','الطب النفسي للمسنين'],['Mood Disorders','اضطرابات المزاج'],['Anxiety Disorders','اضطرابات القلق']],
+ 'Psychology':[['Clinical Psychology','علم النفس الإكلينيكي'],['Child Psychology','علم نفس الطفل'],['Behavioral Therapy','العلاج السلوكي'],['Neuropsychology','علم النفس العصبي']],
+ 'Family Medicine':[['Preventive Medicine','الطب الوقائي'],['Chronic Disease Management','إدارة الأمراض المزمنة'],['Women\u2019s Health','صحة المرأة'],['Geriatric Care','رعاية المسنين']],
+ 'General Practice':[['Primary Care','الرعاية الأولية'],['Preventive Care','الرعاية الوقائية']],
+ 'Nutrition':[['Clinical Nutrition','التغذية الإكلينيكية'],['Sports Nutrition','التغذية الرياضية'],['Pediatric Nutrition','تغذية الأطفال'],['Weight Management','إدارة الوزن']],
+ 'Physiotherapy':[['Sports Physiotherapy','العلاج الطبيعي الرياضي'],['Orthopedic Rehab','تأهيل العظام'],['Neurological Rehab','التأهيل العصبي'],['Pediatric Physiotherapy','العلاج الطبيعي للأطفال']],
+ 'Rehabilitation':[['Sports Rehabilitation','التأهيل الرياضي'],['Neurological Rehabilitation','التأهيل العصبي'],['Pain Management','علاج الألم'],['Spinal Cord Injury','إصابات الحبل الشوكي']],
+ 'Geriatric Medicine':[['Dementia Care','رعاية الخرف'],['Falls & Mobility','السقوط والحركة'],['Palliative Care','الرعاية التلطيفية']]
+};
+const DEGREES=[['MBBS','بكالوريوس الطب والجراحة'],['MD','دكتوراه في الطب'],['MSc','ماجستير'],['PhD','دكتوراه'],['Diploma','دبلوم'],['Membership (MRCP/MRCS)','عضوية الكلية الملكية'],['Higher Specialty Certificate','شهادة التخصص العالي']];
+
+/* Areas of expertise (clinical conditions & procedures) per specialty  [English, Arabic] */
+const EXPERTISE={
+ 'Orthopedic':[['ACL Reconstruction','إعادة بناء الرباط الصليبي'],['Knee Arthroscopy','منظار الركبة'],['Joint Replacement','استبدال المفاصل'],['Hip Replacement','استبدال مفصل الورك'],['Knee Replacement','استبدال مفصل الركبة'],['Sports Injuries','إصابات الملاعب'],['Fracture Fixation','تثبيت الكسور'],['Meniscus Repair','إصلاح الغضروف الهلالي'],['Shoulder Arthroscopy','منظار الكتف'],['Spine Disorders','أمراض العمود الفقري'],['Hand & Wrist Surgery','جراحة اليد والمعصم'],['Foot & Ankle Disorders','أمراض القدم والكاحل'],['Pediatric Orthopedics','عظام الأطفال'],['Osteoporosis','هشاشة العظام'],['Arthritis','التهاب المفاصل']],
+ 'Obstetric and Gynecology':[['IVF','أطفال الأنابيب'],['Infertility','العقم'],['High-Risk Pregnancy','الحمل عالي الخطورة'],['PCOS','تكيس المبايض'],['Endometriosis','بطانة الرحم المهاجرة'],['Menopause','سن اليأس'],['Laparoscopic Surgery','الجراحة بالمنظار'],['Hysteroscopy','منظار الرحم'],['Uterine Fibroids','الأورام الليفية الرحمية'],['Recurrent Miscarriage','الإجهاض المتكرر'],['Fetal Medicine','طب الجنين'],['Normal & Cesarean Delivery','الولادة الطبيعية والقيصرية'],['Family Planning','تنظيم الأسرة'],['Menstrual Disorders','اضطرابات الدورة الشهرية'],['Ovarian Cysts','أكياس المبايض']],
+ 'Cardiology':[['Coronary Artery Disease','مرض الشريان التاجي'],['Heart Failure','قصور القلب'],['Hypertension','ارتفاع ضغط الدم'],['Arrhythmia','اضطراب نظم القلب'],['Cardiac Catheterization','قسطرة القلب'],['Angioplasty & Stenting','القسطرة والدعامات'],['Echocardiography','تخطيط صدى القلب'],['Valvular Heart Disease','أمراض صمامات القلب'],['Pacemaker Implantation','زراعة منظم ضربات القلب'],['Cholesterol Disorders','اضطرابات الكوليسترول'],['Preventive Cardiology','الوقاية من أمراض القلب']],
+ 'Pediatric':[['Childhood Asthma','الربو عند الأطفال'],['Growth & Development','النمو والتطور'],['Vaccinations','التطعيمات'],['Neonatal Care','رعاية حديثي الولادة'],['Childhood Obesity','سمنة الأطفال'],['ADHD','فرط الحركة وتشتت الانتباه'],['Childhood Allergies','حساسية الأطفال'],['Pediatric Infections','عدوى الأطفال'],['Nutrition & Feeding','التغذية والرضاعة'],['Developmental Delay','تأخر النمو'],['Diabetes in Children','السكري عند الأطفال']],
+ 'ENT':[['Sinusitis','التهاب الجيوب الأنفية'],['Tonsillectomy','استئصال اللوزتين'],['Hearing Loss','ضعف السمع'],['Snoring & Sleep Apnea','الشخير وانقطاع النفس'],['Nasal Septum Surgery','جراحة الحاجز الأنفي'],['Ear Infections','التهابات الأذن'],['Vertigo','الدوار'],['Voice Disorders','اضطرابات الصوت'],['Cochlear Implant','زراعة القوقعة'],['Thyroid Surgery','جراحة الغدة الدرقية'],['Allergic Rhinitis','التهاب الأنف التحسسي']],
+ 'Surgery':[['Laparoscopic Surgery','الجراحة بالمنظار'],['Hernia Repair','إصلاح الفتق'],['Gallbladder Surgery','جراحة المرارة'],['Appendectomy','استئصال الزائدة'],['Bariatric Surgery','جراحة السمنة'],['Colorectal Surgery','جراحة القولون والمستقيم'],['Thyroid Surgery','جراحة الغدة الدرقية'],['Breast Surgery','جراحة الثدي'],['Hemorrhoids','البواسير'],['Trauma Surgery','جراحة الإصابات']],
+ 'Ophthalmology':[['Cataract Surgery','جراحة المياه البيضاء'],['LASIK & Refractive Surgery','الليزك وتصحيح النظر'],['Glaucoma','المياه الزرقاء'],['Diabetic Retinopathy','اعتلال الشبكية السكري'],['Retinal Detachment','انفصال الشبكية'],['Corneal Transplant','زراعة القرنية'],['Pediatric Eye Care','عيون الأطفال'],['Strabismus','الحول'],['Dry Eye','جفاف العين'],['Macular Degeneration','تنكس البقعة الصفراء']],
+ 'Urology':[['Kidney Stones','حصوات الكلى'],['Prostate Disease','أمراض البروستاتا'],['Enlarged Prostate (BPH)','تضخم البروستاتا'],['Urinary Incontinence','سلس البول'],['Male Infertility','العقم عند الرجال'],['Erectile Dysfunction','ضعف الانتصاب'],['Bladder Cancer','سرطان المثانة'],['Endoscopic Urology','جراحة المسالك بالمنظار'],['Urinary Tract Infections','التهابات المسالك البولية'],['Kidney Cancer','سرطان الكلى']],
+ 'Dermatology':[['Acne','حب الشباب'],['Eczema','الإكزيما'],['Psoriasis','الصدفية'],['Skin Cancer Screening','الكشف عن سرطان الجلد'],['Hair Loss','تساقط الشعر'],['Vitiligo','البهاق'],['Botox & Fillers','البوتوكس والفيلر'],['Laser Treatment','العلاج بالليزر'],['Pigmentation Disorders','اضطرابات التصبغ'],['Skin Allergies','حساسية الجلد'],['Cosmetic Dermatology','الأمراض الجلدية التجميلية']],
+ 'Endocrinology':[['Diabetes','السكري'],['Thyroid Disorders','أمراض الغدة الدرقية'],['Obesity','السمنة'],['Osteoporosis','هشاشة العظام'],['Hormonal Disorders','الاضطرابات الهرمونية'],['PCOS','تكيس المبايض'],['Adrenal Disorders','أمراض الغدة الكظرية'],['Pituitary Disorders','أمراض الغدة النخامية'],['Growth Disorders','اضطرابات النمو'],['Metabolic Syndrome','متلازمة التمثيل الغذائي']],
+ 'Gastroenterology':[['Acid Reflux (GERD)','ارتجاع المريء'],['Irritable Bowel Syndrome','القولون العصبي'],['Inflammatory Bowel Disease','أمراض الأمعاء الالتهابية'],['Hepatitis','التهاب الكبد'],['Upper Endoscopy','المنظار العلوي'],['Colonoscopy','منظار القولون'],['Liver Disease','أمراض الكبد'],['Peptic Ulcer','قرحة المعدة'],['Pancreatitis','التهاب البنكرياس'],['Fatty Liver','الكبد الدهني']],
+ 'Neurology':[['Stroke','السكتة الدماغية'],['Epilepsy','الصرع'],['Migraine & Headache','الصداع النصفي'],["Parkinson's Disease",'مرض باركنسون'],['Multiple Sclerosis','التصلب المتعدد'],['Dementia','الخرف'],['Peripheral Neuropathy','اعتلال الأعصاب الطرفية'],['Movement Disorders','اضطرابات الحركة'],['Memory Disorders','اضطرابات الذاكرة']],
+ 'Internal Medicine':[['Diabetes Management','إدارة السكري'],['Hypertension','ارتفاع ضغط الدم'],['Thyroid Disorders','أمراض الغدة الدرقية'],['Preventive Care','الرعاية الوقائية'],['Chronic Disease Management','إدارة الأمراض المزمنة'],['Infections','العدوى'],['Anemia','فقر الدم'],['Cholesterol Management','إدارة الكوليسترول']],
+ 'Nephrology':[['Chronic Kidney Disease','مرض الكلى المزمن'],['Dialysis','الغسيل الكلوي'],['Hypertension','ارتفاع ضغط الدم'],['Kidney Stones','حصوات الكلى'],['Glomerulonephritis','التهاب كبيبات الكلى'],['Electrolyte Disorders','اضطرابات الأملاح'],['Kidney Transplant Care','رعاية زراعة الكلى']],
+ 'Hematology':[['Anemia','فقر الدم'],['Leukemia','سرطان الدم'],['Lymphoma','سرطان الغدد الليمفاوية'],['Bleeding Disorders','اضطرابات النزيف'],['Clotting Disorders','اضطرابات التخثر'],['Sickle Cell Disease','فقر الدم المنجلي'],['Thalassemia','الثلاسيميا']],
+ 'Pulmonary':[['Asthma','الربو'],['COPD','الانسداد الرئوي المزمن'],['Sleep Apnea','انقطاع النفس النومي'],['Pneumonia','الالتهاب الرئوي'],['Tuberculosis','السل'],['Pulmonary Fibrosis','تليف الرئة'],['Bronchoscopy','منظار القصبات'],['Lung Cancer','سرطان الرئة']],
+ 'Rheumatology':[['Rheumatoid Arthritis','التهاب المفاصل الروماتويدي'],['Osteoarthritis','الفصال العظمي'],['Lupus','الذئبة'],['Gout','النقرس'],['Osteoporosis','هشاشة العظام'],['Fibromyalgia','الألم العضلي الليفي'],['Ankylosing Spondylitis','التهاب الفقار اللاصق'],['Vasculitis','التهاب الأوعية']],
+ 'Psychiatry':[['Depression','الاكتئاب'],['Anxiety Disorders','اضطرابات القلق'],['Bipolar Disorder','الاضطراب ثنائي القطب'],['OCD','الوسواس القهري'],['PTSD','اضطراب ما بعد الصدمة'],['Schizophrenia','الفصام'],['Addiction','الإدمان'],['Sleep Disorders','اضطرابات النوم'],['ADHD','فرط الحركة']],
+ 'Psychology':[['Cognitive Behavioral Therapy','العلاج المعرفي السلوكي'],['Anxiety','القلق'],['Depression','الاكتئاب'],['Stress Management','إدارة التوتر'],['Relationship Counseling','الاستشارات الزوجية'],['Child Behavioral Issues','مشاكل سلوك الأطفال'],['Trauma Therapy','علاج الصدمات']],
+ 'Family Medicine':[['Preventive Care','الرعاية الوقائية'],['Chronic Disease Management','إدارة الأمراض المزمنة'],['Diabetes','السكري'],['Hypertension','ارتفاع ضغط الدم'],['Vaccinations','التطعيمات'],["Women's Health",'صحة المرأة'],['Pediatric Care','رعاية الأطفال'],['Geriatric Care','رعاية المسنين']],
+ 'General Practice':[['Preventive Care','الرعاية الوقائية'],['Common Illnesses','الأمراض الشائعة'],['Health Screening','الفحص الصحي'],['Chronic Disease Management','إدارة الأمراض المزمنة'],['Vaccinations','التطعيمات'],['Minor Procedures','الإجراءات البسيطة']],
+ 'Nutrition':[['Weight Management','إدارة الوزن'],['Diabetic Diet','تغذية مرضى السكري'],['Sports Nutrition','التغذية الرياضية'],['Clinical Nutrition','التغذية الإكلينيكية'],['Pediatric Nutrition','تغذية الأطفال'],['Eating Disorders','اضطرابات الأكل'],['Obesity Management','إدارة السمنة']],
+ 'Physiotherapy':[['Sports Rehabilitation','التأهيل الرياضي'],['Post-Surgical Rehab','التأهيل بعد الجراحة'],['Back Pain','آلام الظهر'],['Neck Pain','آلام الرقبة'],['Neurological Rehab','التأهيل العصبي'],['Pediatric Physiotherapy','العلاج الطبيعي للأطفال'],['Manual Therapy','العلاج اليدوي']],
+ 'Rehabilitation':[['Stroke Rehabilitation','تأهيل السكتة الدماغية'],['Spinal Cord Injury','إصابات الحبل الشوكي'],['Sports Rehabilitation','التأهيل الرياضي'],['Pain Management','علاج الألم'],['Post-Surgical Rehab','التأهيل بعد الجراحة'],['Amputee Rehabilitation','تأهيل مبتوري الأطراف']],
+ 'Geriatric Medicine':[['Dementia','الخرف'],['Falls Prevention','الوقاية من السقوط'],['Osteoporosis','هشاشة العظام'],['Polypharmacy','تعدد الأدوية'],['Incontinence','السلس'],['Frailty','الهشاشة'],['Palliative Care','الرعاية التلطيفية']],
+ 'Dental':[['Dental Implants','زراعة الأسنان'],['Orthodontics','تقويم الأسنان'],['Root Canal Treatment','علاج الجذور'],['Cosmetic Dentistry','تجميل الأسنان'],['Teeth Whitening','تبييض الأسنان'],['Crowns & Bridges','التيجان والجسور'],['Gum Treatment','علاج اللثة'],['Pediatric Dentistry','أسنان الأطفال'],['Wisdom Tooth Extraction','خلع ضرس العقل'],['Veneers','الفينير']],
+ 'Plastic Surgery':[['Rhinoplasty','تجميل الأنف'],['Liposuction','شفط الدهون'],['Breast Augmentation','تكبير الثدي'],['Tummy Tuck','شد البطن'],['Facelift','شد الوجه'],['Botox & Fillers','البوتوكس والفيلر'],['Burn Reconstruction','ترميم الحروق'],['Scar Revision','تصحيح الندبات'],['Hair Transplant','زراعة الشعر']],
+ 'Podiatry':[['Diabetic Foot Care','رعاية القدم السكرية'],['Bunions','إبهام القدم الأروح'],['Ingrown Toenail','الظفر الغائر'],['Heel Pain','آلام الكعب'],['Flat Feet','القدم المسطحة'],['Foot & Ankle Surgery','جراحة القدم والكاحل'],['Sports Foot Injuries','إصابات القدم الرياضية']]
+};
+
+/* base medical word/phrase dictionary EN->AR for offline translation */
+const MED_WORDS={'medicine':'طب','surgery':'جراحة','surgical':'جراحي','injury':'إصابة','injuries':'إصابات','sport':'رياضي','sports':'رياضية','disease':'أمراض','diseases':'أمراض','disorders':'اضطرابات','disorder':'اضطراب','pediatric':'الأطفال','paediatric':'الأطفال','children':'الأطفال','adult':'البالغين','cardiac':'القلب','heart':'القلب','bone':'العظام','bones':'العظام','joint':'المفاصل','joints':'المفاصل','spine':'العمود الفقري','hand':'اليد','foot':'القدم','ankle':'الكاحل','knee':'الركبة','shoulder':'الكتف','hip':'الورك','skin':'الجلد','hair':'الشعر','eye':'العين','eyes':'العيون','ear':'الأذن','nose':'الأنف','throat':'الحنجرة','kidney':'الكلى','liver':'الكبد','lung':'الرئة','brain':'المخ','nerve':'الأعصاب','blood':'الدم','cancer':'الأورام','tumor':'الأورام','oncology':'الأورام','diabetes':'السكري','thyroid':'الغدة الدرقية','obesity':'السمنة','infertility':'العقم','fertility':'الخصوبة','pregnancy':'الحمل','laser':'الليزر','cosmetic':'تجميلي','aesthetic':'تجميلي','reconstructive':'ترميمي','endoscopy':'المناظير','laparoscopic':'بالمنظار','transplant':'زراعة','rehabilitation':'التأهيل','rehab':'التأهيل','nutrition':'التغذية','pain':'الألم','sleep':'النوم','emergency':'الطوارئ','care':'الرعاية','management':'إدارة','female':'النساء','male':'الذكورة','general':'العام','clinical':'الإكلينيكي','preventive':'الوقائي','interventional':'التداخلي','therapeutic':'العلاجي','obstetrics':'التوليد','obstetric':'التوليد','gynecology':'أمراض النساء','gynaecology':'أمراض النساء','reproductive':'التناسلية','endocrinology':'الغدد الصماء','endocrine':'الغدد الصماء','ivf':'أطفال الأنابيب','neurology':'المخ والأعصاب','neuro':'الأعصاب','dermatology':'الجلدية','urology':'المسالك البولية','nephrology':'الكلى','hematology':'الدم','pulmonology':'الصدرية','pulmonary':'الصدرية','rheumatology':'الروماتيزم','gastroenterology':'الجهاز الهضمي','psychiatry':'النفسي','orthopedic':'العظام','orthopedics':'العظام','orthopaedic':'العظام','ophthalmology':'العيون','plastic':'التجميلية','vascular':'الأوعية الدموية','colorectal':'القولون والمستقيم','bariatric':'السمنة','neonatology':'حديثي الولادة','trauma':'الإصابات','arthroplasty':'استبدال المفاصل','spinal':'العمود الفقري','glaucoma':'المياه الزرقاء','retina':'الشبكية','cornea':'القرنية','cataract':'المياه البيضاء'};
+function buildMedDict(){
+ const d={};
+ Object.values(SUBS).forEach(arr=>arr.forEach(([en,ar])=>{ d[en.toLowerCase()]=ar; }));
+ Object.values(EXPERTISE).forEach(arr=>arr.forEach(([en,ar])=>{ d[en.toLowerCase()]=ar; }));
+ DEGREES.forEach(([en,ar])=>d[en.toLowerCase()]=ar);
+ SPECIALTIES.forEach(s=>d[s.en.toLowerCase()]=s.ar);
+ // common phrases
+ Object.assign(d,{'sport medicine':'طب الرياضة','sports medicine':'طب الرياضة','sport injury':'إصابات الملاعب','sports injury':'إصابات الملاعب','sports injuries':'إصابات الملاعب','high-risk pregnancy':'الحمل عالي الخطورة','minimally invasive surgery':'الجراحة طفيفة التوغل','joint replacement':'استبدال المفاصل','pain management':'علاج الألم','sleep medicine':'طب النوم','weight management':'إدارة الوزن','obstetrics & gynecology':'التوليد وأمراض النساء','obstetrics and gynecology':'التوليد وأمراض النساء','obstetrics gynecology':'التوليد وأمراض النساء','ob/gyn':'التوليد وأمراض النساء','reproductive endocrinology':'الغدد الصماء التناسلية','reproductive endocrinology & infertility':'الغدد الصماء التناسلية والعقم','reproductive endocrinology and infertility':'الغدد الصماء التناسلية والعقم','infertility & ivf':'العقم وأطفال الأنابيب','maternal-fetal medicine':'طب الأم والجنين','orthopedic trauma':'إصابات وكسور العظام','orthopaedic trauma':'إصابات وكسور العظام','hand surgery':'جراحة اليد','spine surgery':'جراحة العمود الفقري','pediatric endocrinology':'الغدد الصماء للأطفال','interventional cardiology':'القسطرة العلاجية'});
+ return d;
+}
+let MED_DICT={};
+function wordTranslate(text){
+ const words=text.trim().toLowerCase().split(/\s+/);
+ const out=words.map(w=>{const k=w.replace(/[^a-z&-]/g,'');return MED_DICT[k]||MED_WORDS[k]||w;});
+ return out.join(' ').trim();
+}
+function translateMed(text){
+ if(!text)return '';
+ const t=text.trim().toLowerCase().replace(/\s+/g,' ');
+ if(MED_DICT[t])return MED_DICT[t];
+ // split lists on , / & and "and"
+ const parts=text.split(/\s*[,\/&]\s*|\s+and\s+/i).map(s=>s.trim()).filter(Boolean);
+ if(parts.length>1){
+   return parts.map(p=>{const k=p.toLowerCase().replace(/\s+/g,' ');return MED_DICT[k]||wordTranslate(p);}).join('، ');
+ }
+ return wordTranslate(text);
+}
+
+/* ============ STATE ============ */
+let state={rank:'',rankOther:'',specType:'',privYN:'',consent:'',locations:[],hospitals:[],photo:'',creds:[],expertise:[]};
+let expFiltered=[], expHi=-1;
+let credSeq=0, specHi=-1, specFiltered=[];
+let editingId=null, selectedCards=new Set();
+let allDoctors=[]; // cache
+
+/* ============ HELPERS ============ */
+const $=id=>document.getElementById(id);
+function uid(){return 'd_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function toast(msg,err){const t=$('toast');t.textContent=msg;t.className='toast show'+(err?' err':'');setTimeout(()=>t.className='toast',2600)}
+
+/* ============ INIT ============ */
+function init(){
+  MED_DICT=buildMedDict();
+  // rank chips
+  $('rankChips').innerHTML=RANKS.map(r=>`<div class="chip" data-rank="${r}" onclick="pickRank('${r}')">${r}</div>`).join('');
+  // location chips
+  $('locChips').innerHTML=LOCATIONS.map(l=>`<div class="chip" data-loc="${esc(l.en)}" onclick="toggleLoc('${esc(l.en)}')">${l.en} <span class="ar">${l.ar}</span></div>`).join('');
+  // hospital chips
+  $('hospChips').innerHTML=HOSPITALS.map(h=>`<div class="chip" data-hosp="${h}" onclick="toggleHosp('${h}')">${h}</div>`).join('');
+  // filters
+  $('fBranch').innerHTML='<option value="">All branches</option>'+LOCATIONS.map(l=>`<option>${l.en}</option>`).join('');
+  $('fSpec').innerHTML='<option value="">All specialties</option>'+allSpecs().map(s=>`<option>${s.en}</option>`).join('');
+  addCred();
+  liveCard();
+}
+
+/* ============ RANK ============ */
+function pickRank(r){
+  state.rank=r;
+  document.querySelectorAll('[data-rank]').forEach(c=>c.classList.toggle('sel',c.dataset.rank===r));
+  $('rankOther').classList.toggle('hide',r!=='Other');
+  liveCard();
+}
+$('rankOther')&&($('rankOther').oninput=function(){state.rankOther=this.value;liveCard()});
+
+/* ============ SPECIALTY TYPE + COMBO ============ */
+function pickType(t){
+  state.specType=t;
+  document.querySelectorAll('[data-stype]').forEach(c=>c.classList.toggle('sel',c.dataset.stype===t));
+  $('privStep').classList.toggle('hide',t!=='surgical');
+  $('specInput').placeholder='Type to search specialty…';
+  $('specInput').value='';$('specEn').value='';$('specAr').value='';
+  filterSpec('');openSpec();
+  liveCard();
+}
+function availableSpecs(){
+  if(!state.specType) return [];
+  return allSpecs().filter(s=>s.type===state.specType||s.type==='both');
+}
+function filterSpec(q){
+  if(!state.specType){toast('Select Specialty Type first',true);return}
+  q=q.toLowerCase().trim();
+  specFiltered=availableSpecs().filter(s=>s.en.toLowerCase().includes(q)||s.ar.includes(q));
+  specHi=-1;
+  const L=$('specList');
+  if(!specFiltered.length){L.innerHTML='<div class="combo-empty">No match</div>';L.classList.add('open');return}
+  L.innerHTML=specFiltered.map((s,i)=>`<div class="combo-opt" data-i="${i}" onmousedown="chooseSpec(${i})"><span class="en">${s.en}</span><span class="ar">${s.ar}</span></div>`).join('');
+  L.classList.add('open');
+}
+function openSpec(){ if(state.specType) filterSpec($('specInput').value); }
+function chooseSpec(i){
+  const s=specFiltered[i]; if(!s)return;
+  $('specInput').value=s.en;$('specEn').value=s.en;$('specAr').value=s.ar;
+  $('specList').classList.remove('open');
+  refreshSubSuggestions(s.en);
+  // update expertise dropdown to this specialty
+  const pool=expPool();
+  $('expInput').placeholder=pool.length?('e.g. '+pool[0][0]+' — type to search'):'Type areas of expertise…';
+  if($('expList').classList.contains('open')) filterExp($('expInput').value);
+  // update credential field suggestions + prefill empty Board fields with specialty
+  state.creds.forEach(c=>{
+    updateCredDatalist(c.id);
+    if(c.type==='Board' && !c.field){ c.field=s.en; const f=$('fld_'+c.id); if(f)f.value=s.en; }
+  });
+  liveCard();
+}
+function refreshSubSuggestions(specEn){
+  const list=subsFor(specEn).map(x=>x[0]);
+  const dl=$('subDatalist');
+  if(dl) dl.innerHTML=list.map(o=>`<option value="${esc(o)}">`).join('');
+  $('subEn').placeholder=list.length?('e.g. '+list[0]+' \u2014 type to search'):'Subspecialty';
+}
+function specKey(e){
+  const L=$('specList'); if(!L.classList.contains('open'))return;
+  const opts=L.querySelectorAll('.combo-opt');
+  if(e.key==='ArrowDown'){e.preventDefault();specHi=Math.min(specHi+1,opts.length-1)}
+  else if(e.key==='ArrowUp'){e.preventDefault();specHi=Math.max(specHi-1,0)}
+  else if(e.key==='Enter'){e.preventDefault();if(specHi>=0)chooseSpec(specHi);return}
+  else if(e.key==='Escape'){L.classList.remove('open');return}
+  opts.forEach((o,i)=>o.classList.toggle('hi',i===specHi));
+  if(opts[specHi])opts[specHi].scrollIntoView({block:'nearest'});
+}
+document.addEventListener('click',e=>{
+  document.querySelectorAll('.combo-list.open').forEach(L=>{ const c=L.closest('.combo'); if(c && !c.contains(e.target)) L.classList.remove('open'); });
+});
+
+/* ============ AREAS OF EXPERTISE (multi-select, specialty-driven) ============ */
+function expPool(){
+  const sp=$('specEn').value;
+  if(!sp) return [];
+  const pool=(EXPERTISE[sp]||[]).slice();
+  subsFor(sp).forEach(([en,ar])=>{ if(!pool.some(p=>p[0]===en)) pool.push([en,ar]); });
+  return pool;
+}
+function openExp(){
+  if(!$('specEn').value){ toast('Select a specialty first',true); return; }
+  filterExp($('expInput').value);
+}
+function filterExp(q){
+  if(!$('specEn').value){ $('expInput').placeholder='Select specialty first…'; return; }
+  q=(q||'').toLowerCase().trim();
+  const chosen=new Set(state.expertise.map(x=>x.en.toLowerCase()));
+  expFiltered=expPool().filter(([en,ar])=>!chosen.has(en.toLowerCase()) && (en.toLowerCase().includes(q)||ar.includes(q)));
+  expHi=-1;
+  const L=$('expList');
+  let html=expFiltered.map(([en,ar],i)=>`<div class="combo-opt" data-i="${i}" onmousedown="addExp(${i})"><span class="en">${esc(en)}</span><span class="ar">${esc(ar)}</span></div>`).join('');
+  const typed=$('expInput').value.trim();
+  if(typed && !expFiltered.some(([en])=>en.toLowerCase()===typed.toLowerCase()) && !chosen.has(typed.toLowerCase())){
+    html+=`<div class="combo-opt" onmousedown="addExpCustom()"><span class="en">➕ Add “${esc(typed)}”</span><span class="ar">إضافة مخصصة</span></div>`;
+  }
+  if(!html) html='<div class="combo-empty">No matches — type to add a custom area</div>';
+  L.innerHTML=html; L.classList.add('open');
+}
+function addExp(i){
+  const item=expFiltered[i]; if(!item)return;
+  state.expertise.push({en:item[0],ar:item[1]});
+  $('expInput').value=''; renderExpChips(); syncExpFields(); filterExp('');
+}
+function addExpCustom(){
+  const v=$('expInput').value.trim(); if(!v)return;
+  if(state.expertise.some(x=>x.en.toLowerCase()===v.toLowerCase())){$('expInput').value='';return}
+  state.expertise.push({en:v, ar:translateMed(v)});
+  $('expInput').value=''; renderExpChips(); syncExpFields(); filterExp('');
+}
+function removeExp(i){ state.expertise.splice(i,1); renderExpChips(); syncExpFields(); }
+function renderExpChips(){
+  $('expChips').innerHTML=state.expertise.map((x,i)=>`<div class="chip sel" title="${esc(x.ar)}" onclick="removeExp(${i})">${esc(x.en)} <span style="opacity:.75">✕</span></div>`).join('');
+}
+function syncExpFields(){
+  $('expEn').value=state.expertise.map(x=>x.en).join(', ');
+  if($('expAr').dataset.edited!=='1') $('expAr').value=state.expertise.map(x=>x.ar).join('، ');
+  liveCard();
+}
+function expKey(e){
+  const L=$('expList'); if(!L.classList.contains('open'))return;
+  const opts=L.querySelectorAll('.combo-opt'); if(!opts.length)return;
+  if(e.key==='ArrowDown'){e.preventDefault();expHi=Math.min(expHi+1,opts.length-1)}
+  else if(e.key==='ArrowUp'){e.preventDefault();expHi=Math.max(expHi-1,0)}
+  else if(e.key==='Enter'){e.preventDefault(); if(expHi>=0){opts[expHi].dispatchEvent(new Event('mousedown'))} else if($('expInput').value.trim()){addExpCustom()} return;}
+  else if(e.key==='Escape'){L.classList.remove('open');return}
+  opts.forEach((o,i)=>o.classList.toggle('hi',i===expHi));
+  if(opts[expHi])opts[expHi].scrollIntoView({block:'nearest'});
+}
+
+/* ============ LOCATIONS / HOSPITALS ============ */
+function toggleLoc(l){
+  const i=state.locations.indexOf(l);
+  if(i>=0)state.locations.splice(i,1);else state.locations.push(l);
+  document.querySelector(`[data-loc="${CSS.escape(l)}"]`).classList.toggle('sel');
+  liveCard();
+}
+function setPrivYN(v){
+  state.privYN=v;
+  document.querySelectorAll('[data-priv]').forEach(c=>c.classList.toggle('sel',c.dataset.priv===v));
+  $('hospWrap').classList.toggle('hide',v!=='yes');
+  if(v!=='yes'){state.hospitals=[];document.querySelectorAll('[data-hosp]').forEach(c=>c.classList.remove('sel'))}
+}
+function toggleHosp(h){
+  const i=state.hospitals.indexOf(h);
+  if(i>=0)state.hospitals.splice(i,1);else state.hospitals.push(h);
+  document.querySelector(`[data-hosp="${CSS.escape(h)}"]`).classList.toggle('sel');
+}
+function setConsent(v){
+  state.consent=v;
+  document.querySelectorAll('[data-consent]').forEach(c=>c.classList.toggle('sel',c.dataset.consent===v));
+}
+
+/* ============ CREDENTIALS ============ */
+const ROYAL_FIELDS=['Surgery','Family Medicine','Obstetric and Gynecology','Pediatric','Internal Medicine'];
+
+function credFieldOptions(c){
+  if(normCountry(c.country)==='Royal College') return ROYAL_FIELDS;
+  const sp=$('specEn').value;
+  if(c.type==='Degree') return DEGREES.map(d=>d[0]);
+  if(c.type==='Fellowship' || c.type==='Certificate'){
+    const subs=subsFor(sp).map(s=>s[0]);
+    return subs.length? subs : allSpecs().map(s=>s.en);
+  }
+  // Board -> the doctor's specialty first, then all specialties
+  const all=allSpecs().map(s=>s.en);
+  return sp? [sp,...all.filter(x=>x!==sp)] : all;
+}
+function updateCredDatalist(id){
+  const c=state.creds.find(x=>x.id===id);if(!c)return;
+  const dl=$('dl_'+id); if(!dl)return;
+  dl.innerHTML=credFieldOptions(c).map(o=>`<option value="${esc(o)}">`).join('');
+}
+function credPlaceholder(c){
+  if(normCountry(c.country)==='Royal College') return '— select field of the Royal College —';
+  const sp=$('specEn').value;
+  if(c.type==='Fellowship') return 'Fellowship'+(sp?' in '+sp:'')+' — type to search';
+  if(c.type==='Degree') return 'Degree (e.g. MBBS, MD, PhD)';
+  return 'Board specialty — type to search';
+}
+/* Replace the field cell with either a strict <select> (Royal College) or a typeable <input> */
+function renderCredField(id){
+  const c=state.creds.find(x=>x.id===id); if(!c) return;
+  const row=$(id); if(!row)return;
+  const existing=row.querySelector('#fld_'+id); if(!existing)return;
+  let el;
+  if(normCountry(c.country)==='Royal College'){
+    el=document.createElement('select');
+    el.id='fld_'+id;
+    el.onchange=e=>credChange(id,'field',e.target.value);
+    el.innerHTML='<option value="">— select field —</option>'+ROYAL_FIELDS.map(f=>`<option value="${esc(f)}" ${c.field===f?'selected':''}>${esc(f)}</option>`).join('');
+    // if current field isn't one of the 5, clear it so user picks intentionally
+    if(c.field && !ROYAL_FIELDS.includes(c.field)){ c.field=''; }
+  } else {
+    el=document.createElement('input');
+    el.type='text'; el.id='fld_'+id; el.autocomplete='off';
+    el.setAttribute('list','dl_'+id);
+    el.placeholder=credPlaceholder(c);
+    el.value=c.field||'';
+    el.oninput=e=>credChange(id,'field',e.target.value);
+  }
+  existing.replaceWith(el);
+  updateCredDatalist(id);
+}
+function addCred(){
+  const id='c'+(credSeq++);
+  const sp=$('specEn').value;
+  const c={id,country:'Saudi',customCountry:'',type:'Board',field: sp||''};
+  state.creds.push(c);
+  const div=document.createElement('div');div.className='cred-row';div.id=id;
+  div.innerHTML=`
+    <select onchange="credChange('${id}','country',this.value)">${BOARDS.map(b=>`<option value="${esc(b.en)}">${b.en}</option>`).join('')}</select>
+    <select onchange="credChange('${id}','type',this.value)">${CRED_TYPES.map(t=>`<option>${t}</option>`).join('')}</select>
+    <input type="text" id="fld_${id}" value="${esc(sp||'')}" placeholder="${credPlaceholder(c)}" list="dl_${id}" autocomplete="off" oninput="credChange('${id}','field',this.value)">
+    <datalist id="dl_${id}"></datalist>
+    <button class="del" onclick="delCred('${id}')">🗑</button>`;
+  $('credRows').appendChild(div);
+  updateCredDatalist(id);
+  liveCard();
+}
+function credChange(id,key,val){
+  const c=state.creds.find(x=>x.id===id);if(!c)return;
+  c[key]=val;
+  if(key==='type'){
+    updateCredDatalist(id);
+    const fld=$('fld_'+id);
+    if(fld) fld.placeholder=credPlaceholder(c);
+    const sp=$('specEn').value;
+    if(val==='Board' && sp && !c.field && normCountry(c.country)!=='Royal College'){ c.field=sp; if(fld)fld.value=sp; }
+  }
+  if(key==='country'){
+    const row=$(id);
+    let extra=row.querySelector('.cc-extra');
+    if(val==='Other'){
+      if(!extra){extra=document.createElement('input');extra.className='cc-extra';extra.type='text';extra.placeholder='Country name (e.g. UK, Jordan)';
+        extra.style.gridColumn='1 / -1';extra.oninput=e=>{c.customCountry=e.target.value;liveCard()};
+        row.appendChild(extra);}
+    } else if(extra){extra.remove();c.customCountry=''}
+    renderCredField(id);   // swap input ↔ select as needed
+  }
+  liveCard();
+}
+function delCred(id){
+  state.creds=state.creds.filter(x=>x.id!==id);
+  $(id).remove();liveCard();
+}
+function credLabel(c){
+  if(!(c.field||c.country))return '';
+  const cn=normCountry(c.country);
+  // Royal College → "Royal College of {field}"  (or "Fellowship of the Royal College of {field}")
+  if(cn==='Royal College'){
+    const base='Royal College of '+(c.field||'…');
+    if(c.type==='Fellowship')  return 'Fellowship of the '+base;
+    if(c.type==='Certificate') return 'Certificate of the '+base;
+    if(c.type==='Degree')      return (c.field?c.field+' – ':'')+'Royal College';
+    return base;
+  }
+  const country=cn==='Other'?(c.customCountry||''):cn;
+  if(c.type==='Degree'){ return c.field?(c.field+(country?' – '+country:'')):(country?country+' Degree':'Degree'); }
+  const base=(country?country+' ':'')+c.type; // "Saudi Board" / "Canadian Fellowship" / "American Certificate"
+  return c.field? base+' of '+c.field : base;
+}
+function credArabic(c){
+  if(!(c.field||c.country))return '';
+  const cn=normCountry(c.country);
+  const fieldAr=c.field?translateMed(c.field):'';
+  // Royal College → "الكلية الملكية لـ{field}"
+  if(cn==='Royal College'){
+    const lPrefix = fieldAr ? (fieldAr.startsWith('ال') ? 'ل'+fieldAr.slice(1) : 'ل'+fieldAr) : '';
+    const core='الكلية الملكية'+(lPrefix?' '+lPrefix:'');
+    if(c.type==='Fellowship')  return 'زمالة '+core;
+    if(c.type==='Certificate') return 'شهادة '+core;
+    if(c.type==='Degree')      return (fieldAr||'شهادة')+' - الكلية الملكية';
+    return core;
+  }
+  const isFellow=c.type==='Fellowship', isDeg=c.type==='Degree', isCert=c.type==='Certificate';
+  const fem=isFellow||isDeg||isCert;
+  let adj='';
+  if(cn==='Other'){ adj=c.customCountry||''; }
+  else { const a=COUNTRY_ADJ[cn]; adj=a?(fem?a.f:a.m):''; }
+  if(isDeg){ return (fieldAr||'شهادة')+(adj&&cn!=='Other'?' ('+adj+')':(adj?' - '+adj:'')); }
+  const typeWord = isCert?'الشهادة' : (isFellow?'الزمالة':'البورد');
+  let s=typeWord+(adj?' '+adj:'');
+  if(fieldAr) s+=' في '+fieldAr;
+  return s;
+}
+
+/* ============ PHOTO ============ */
+function loadPhoto(inp){
+  const f=inp.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{state.photo=e.target.result;
+    $('photoUp').classList.add('has');
+    $('photoPrompt').innerHTML=`<img src="${state.photo}"><br><small class="hint">Tap to change</small>`;
+    liveCard();};
+  r.readAsDataURL(f);
+}
+
+/* ============ ARABIC NAME TRANSLITERATION (offline, instant) ============ */
+let nameArEdited=false;
+const NAME_MAP={
+ // particles
+ al:'ال', el:'ال', bin:'بن', ben:'بن', ibn:'ابن', abu:'أبو', abo:'أبو', om:'أم', umm:'أم', abd:'عبد', abdel:'عبد', abdul:'عبد',
+ // male first names
+ wail:'وائل', wael:'وائل', ahmed:'أحمد', ahmad:'أحمد', mohammed:'محمد', muhammad:'محمد', mohammad:'محمد', mohamed:'محمد', mohamad:'محمد',
+ abdullah:'عبدالله', abdallah:'عبدالله', abdulrahman:'عبدالرحمن', abdelrahman:'عبدالرحمن', abdulaziz:'عبدالعزيز', abdelaziz:'عبدالعزيز',
+ ali:'علي', omar:'عمر', umar:'عمر', khaled:'خالد', khalid:'خالد', saud:'سعود', sultan:'سلطان', faisal:'فيصل', faysal:'فيصل',
+ fahad:'فهد', fahd:'فهد', nasser:'ناصر', nasir:'ناصر', saleh:'صالح', salih:'صالح', saad:'سعد', yousef:'يوسف', yusuf:'يوسف', youssef:'يوسف', yousif:'يوسف',
+ ibrahim:'إبراهيم', ismail:'إسماعيل', hassan:'حسن', hasan:'حسن', hussein:'حسين', hussain:'حسين', husain:'حسين', mahmoud:'محمود', mahmud:'محمود',
+ mostafa:'مصطفى', mustafa:'مصطفى', tariq:'طارق', tarek:'طارق', ziad:'زياد', ziyad:'زياد', bandar:'بندر', turki:'تركي', majed:'ماجد', majid:'ماجد',
+ waleed:'وليد', walid:'وليد', rashid:'راشد', rasheed:'راشد', salman:'سلمان', naif:'نايف', nayef:'نايف', mansour:'منصور', mansur:'منصور',
+ hamza:'حمزة', hamzah:'حمزة', yazan:'يزن', anas:'أنس', bilal:'بلال', bassam:'بسام', ammar:'عمار', adnan:'عدنان', rami:'رامي', sami:'سامي',
+ karim:'كريم', kareem:'كريم', nabil:'نبيل', jamal:'جمال', kamal:'كمال', iyad:'إياد', ehab:'إيهاب', ihab:'إيهاب', sherif:'شريف', shareef:'شريف',
+ ashraf:'أشرف', hesham:'هشام', hisham:'هشام', tamer:'تامر', wessam:'وسام', wissam:'وسام', haitham:'هيثم', haytham:'هيثم', moaz:'معاذ',
+ osama:'أسامة', usama:'أسامة', zaid:'زيد', zayd:'زيد', thamer:'ثامر', saif:'سيف', seif:'سيف', ghassan:'غسان', jihad:'جهاد', samer:'سامر',
+ amr:'عمرو', amer:'عامر', basel:'باسل', basil:'باسل', firas:'فراس', raed:'رائد', rayan:'ريان', ryan:'ريان', maher:'ماهر', nader:'نادر',
+ // female first names
+ souzan:'سوزان', suzan:'سوزان', suzanne:'سوزان', sarah:'سارة', sara:'سارة', noura:'نورة', nora:'نورة', nourah:'نورة', maha:'مها', huda:'هدى', hoda:'هدى',
+ amani:'أماني', reem:'ريم', dana:'دانة', lama:'لمى', rana:'رنا', lina:'لينا', nada:'ندى', maryam:'مريم', mariam:'مريم', fatima:'فاطمة', fatimah:'فاطمة',
+ aisha:'عائشة', aysha:'عائشة', khadija:'خديجة', layla:'ليلى', laila:'ليلى', salma:'سلمى', hala:'هالة', nour:'نور', noor:'نور', rania:'رانيا', dina:'دينا',
+ mona:'منى', muna:'منى', asma:'أسماء', amal:'أمل', wafa:'وفاء', ghada:'غادة', hanan:'حنان', iman:'إيمان', eman:'إيمان', abeer:'عبير', shaden:'شادن',
+ jana:'جنى', joud:'جود', raghad:'رغد', shahad:'شهد', razan:'رزان', bayan:'بيان', arwa:'أروى', haya:'هيا', afnan:'أفنان', rawan:'روان', tala:'تالا',
+ // common family names (with article)
+ kafy:'كافي', kafi:'كافي', maghrabi:'المغربي', almaghrabi:'المغربي', ghamdi:'الغامدي', alghamdi:'الغامدي', qahtani:'القحطاني', alqahtani:'القحطاني',
+ otaibi:'العتيبي', alotaibi:'العتيبي', harbi:'الحربي', alharbi:'الحربي', zahrani:'الزهراني', alzahrani:'الزهراني', shehri:'الشهري', shahri:'الشهري',
+ dossari:'الدوسري', dosari:'الدوسري', aldossari:'الدوسري', mutairi:'المطيري', almutairi:'المطيري', shammari:'الشمري', alshammari:'الشمري',
+ subaie:'السبيعي', malki:'المالكي', almalki:'المالكي', amri:'العمري', alamri:'العمري', johani:'الجهني', shamrani:'الشمراني', qarni:'القرني'
+};
+// phonetic fallback for unknown tokens
+function phonetic(w){
+  w=w.toLowerCase().replace(/[^a-z]/g,'');
+  if(!w)return '';
+  const di={sh:'ش',ch:'تش',th:'ث',kh:'خ',gh:'غ',dh:'ذ',ph:'ف',ck:'ك',oo:'و',ou:'و',ee:'ي',aa:'ا',ya:'يا'};
+  const si={a:'ا',b:'ب',c:'ك',d:'د',e:'',f:'ف',g:'ج',h:'ه',i:'ي',j:'ج',k:'ك',l:'ل',m:'م',n:'ن',o:'و',p:'ب',q:'ق',r:'ر',s:'س',t:'ت',u:'و',v:'ف',w:'و',x:'كس',y:'ي',z:'ز'};
+  let out='',i=0;
+  while(i<w.length){
+    const two=w.substr(i,2);
+    if(di[two]){out+=di[two];i+=2;continue;}
+    let ch=si[w[i]]??'';
+    // drop leading silent vowel except keep alef at start
+    if(i===0 && (w[i]==='a')) ch='أ';
+    if(i>0 && (w[i]==='e')) ch=''; // silent e
+    out+=ch;i++;
+  }
+  return out||w;
+}
+function translitToken(tok){
+  const key=tok.toLowerCase().replace(/[^a-z]/g,'');
+  if(NAME_MAP[key])return NAME_MAP[key];
+  // token like "almaghrabi" not in map -> treat as ال + root
+  if(key.length>3 && key.startsWith('al')){
+    const root=key.slice(2);
+    if(NAME_MAP[root])return 'ال'+NAME_MAP[root].replace(/^ال/,'');
+    return 'ال'+phonetic(root);
+  }
+  return phonetic(key);
+}
+function arabicName(en){
+  const tokens=en.trim().split(/[\s\-]+/).filter(Boolean);
+  const out=[];
+  for(let i=0;i<tokens.length;i++){
+    const lc=tokens[i].toLowerCase();
+    // article "al"/"el" merges with the following token -> الكافي
+    if((lc==='al'||lc==='el') && i+1<tokens.length){
+      const next=tokens[++i];
+      let nar=translitToken(next);
+      nar=nar.replace(/^ال/,''); // avoid double article
+      out.push('ال'+nar);
+      continue;
+    }
+    out.push(translitToken(tokens[i]));
+  }
+  return out.join(' ').trim();
+}
+function nameToArabic(force){
+  const en=$('nameEn').value.trim();
+  const ar=$('nameAr');
+  if(!en){return}
+  if(!force && nameArEdited && ar.value.trim())return; // respect manual edits
+  ar.value=arabicName(en);
+  nameArEdited=false;
+  liveCard();
+}
+
+/* ============ AUTO TRANSLATE (offline medical dictionary, instant) ============ */
+function autoTranslate(srcId,dstId,el,btn){
+  const src=$(srcId).value.trim();
+  const dst=$(dstId);
+  if(!src)return;
+  const force=!!btn;
+  if(!force && dst.dataset.edited==='1' && dst.value.trim())return; // respect manual edits
+  dst.value=translateMed(src);
+  dst.dataset.edited='';
+  liveCard();
+}
+
+/* ============ LIVE CARD ============ */
+function gather(){
+  const specEn=$('specEn').value, specAr=$('specAr').value;
+  return {
+    nameEn:$('nameEn').value, nameAr:$('nameAr').value, phone:$('phone').value,
+    title:$('title').value, rank:state.rank==='Other'?state.rankOther:state.rank,
+    rankRaw:state.rank, rankOther:state.rankOther,
+    specType:state.specType, specEn, specAr,
+    subEn:$('subEn').value, subAr:$('subAr').value,
+    creds:state.creds.map(c=>({...c})),
+    expEn:$('expEn').value, expAr:$('expAr').value,
+    expertise:state.expertise.map(x=>({...x})),
+    locations:[...state.locations], ageGroup:$('ageGroup').value,
+    privYN:state.privYN, hospitals:[...state.hospitals],
+    photo:state.photo, consent:state.consent
+  };
+}
+function cardHTML(d){
+  const loc=d.locations[0]? (LOCATIONS.find(l=>l.en===d.locations[0])||{}):{};
+  const locAr=loc.ar||'', locEn=d.locations[0]||'';
+  const titleEn=d.title?d.title+' ':'';
+  // ---- specialty banner: Rank + Specialty + Subspecialty (one natural line per language) ----
+  const rankAr=(d.rankRaw && d.rankRaw!=='Other')?rankArabic(d.rankRaw):'';
+  let arLine=(rankAr?rankAr+' ':'')+(d.specAr||'')+(d.subAr?((d.specAr)?' و ':'')+d.subAr:'');
+  arLine=arLine.trim()||'التخصص';
+  let enLine=(d.rank?d.rank+' ':'')+(d.specEn||'')+(d.subEn?((d.specEn)?' – ':'')+d.subEn:'');
+  enLine=enLine.trim()||'Specialty';
+  // ---- credentials: one line each, Arabic block then English block ----
+  const credArr=d.creds.filter(c=>c.field||c.country);
+  const credAr=credArr.map(credArabic).filter(Boolean);
+  const credEn=credArr.map(credLabel).filter(Boolean);
+  const photoBlock=d.photo
+    ? `<img src="${d.photo}">`
+    : `<div class="dc-photo-ph"><svg width="80" height="80" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0 2c-5 0-9 2.5-9 6v2h18v-2c0-3.5-4-6-9-6z"/></svg></div>`;
+  return `<div class="doc-card">
+    <div class="dc-upper">
+      <div class="dc-logo"><span class="m"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2L3 7v10l9 5 9-5V7l-9-5z" fill="#0a2a5e"/><path d="M12 7v10M7 12h10" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></span><b>My Clinic</b><span class="ar">عيادتي</span></div>
+      <div class="dc-photo-wrap">
+        ${photoBlock}
+        ${locEn?`<div class="dc-loc"><div class="ar">في عيادتي جدة ${locAr}</div><div class="en">In My Clinic Jeddah ${locEn}</div></div>`:''}
+      </div>
+      <div class="dc-name">
+        <div class="dc-name-ar">${d.nameAr?(d.title==='Prof.'?'أ.د. ':'د. ')+esc(d.nameAr):'اسم الطبيب'}</div>
+        <div class="dc-name-en">${titleEn}${esc(d.nameEn)||'Doctor Name'}</div>
+      </div>
+    </div>
+    <div class="dc-lower">
+      <div class="dc-spec">
+        <div class="ar">${esc(arLine)}</div>
+        <div class="en">${esc(enLine)}</div>
+      </div>
+      ${(credAr.length||credEn.length)?`<div class="dc-creds">
+        ${credAr.length?`<div class="ar">${credAr.map(esc).join('<br>')}</div>`:''}
+        ${credEn.length?`<div class="en">${credEn.map(esc).join('<br>')}</div>`:''}
+        ${d.ageGroup?`<div class="en" style="margin-top:7px;font-weight:600;color:#cfe0f4">${esc(d.ageGroup)}</div>`:''}
+      </div>`:(d.ageGroup?`<div class="dc-creds"><div class="en" style="font-weight:600;color:#cfe0f4">${esc(d.ageGroup)}</div></div>`:'')}
+    </div>
+  </div>`;
+}
+function rankArabic(r){return ({'Specialist':'أخصائي','Senior Specialist':'أخصائي أول','Consultant':'استشاري'})[r]||''}
+function liveCard(){ $('liveCardEl').innerHTML=cardHTML(gather()); }
+
+/* ============ DATABASE LAYER ============ */
+/* Configure your backend in the Admin → ⚙ Configure database panel.
+   Two modes supported:
+   1) RAILWAY_API  — your Railway Express+Postgres backend (recommended)
+   2) SUPABASE_URL + SUPABASE_KEY  — Supabase REST                                  */
+const DB_CONFIG = {
+  RAILWAY_API:  '',   // e.g. 'https://myclinic-onboarding-production.up.railway.app'
+  SUPABASE_URL: '',   // e.g. 'https://abcdxyz.supabase.co'
+  SUPABASE_KEY: ''    // anon public key
+};
+const useRailway  = ()=> !!DB_CONFIG.RAILWAY_API;
+const useSupabase = ()=> !useRailway() && !!(DB_CONFIG.SUPABASE_URL && DB_CONFIG.SUPABASE_KEY);
+const useCloudDB  = ()=> useRailway() || useSupabase();
+function railwayURL(p){ return DB_CONFIG.RAILWAY_API.replace(/\/+$/,'') + '/api/onboarding' + p; }
+function sbHeaders(){ return {'apikey':DB_CONFIG.SUPABASE_KEY,'Authorization':'Bearer '+DB_CONFIG.SUPABASE_KEY,'Content-Type':'application/json'}; }
+
+/* persist & manage DB settings from the admin UI */
+let dbTab='rail';
+function setDBTab(t){
+  dbTab=t;
+  $('dbtab_rail').classList.toggle('active',t==='rail');
+  $('dbtab_sb').classList.toggle('active',t==='sb');
+  $('dbpane_rail').classList.toggle('hide',t!=='rail');
+  $('dbpane_sb').classList.toggle('hide',t!=='sb');
+  $('dbhelp_rail').classList.toggle('hide',t!=='rail');
+  $('dbhelp_sb').classList.toggle('hide',t!=='sb');
+}
+async function loadDBConfig(){
+  // primary: artifact storage
+  if(window.storage){
+    try{
+      const v=await window.storage.get('db_config', true);
+      if(v && v.value){
+        const c=JSON.parse(v.value);
+        DB_CONFIG.RAILWAY_API=c.rail||c.railway||'';
+        DB_CONFIG.SUPABASE_URL=c.url||''; DB_CONFIG.SUPABASE_KEY=c.key||'';
+        if(useCloudDB()) return;
+      }
+    }catch(e){}
+  }
+  // fallback: localStorage (used when hosted standalone)
+  try{
+    const raw=localStorage.getItem('myclinic_db_config');
+    if(raw){
+      const c=JSON.parse(raw);
+      DB_CONFIG.RAILWAY_API=c.rail||c.railway||'';
+      DB_CONFIG.SUPABASE_URL=c.url||''; DB_CONFIG.SUPABASE_KEY=c.key||'';
+    }
+  }catch(e){}
+}
+async function persistDBConfig(){
+  const payload=JSON.stringify({rail:DB_CONFIG.RAILWAY_API,url:DB_CONFIG.SUPABASE_URL,key:DB_CONFIG.SUPABASE_KEY});
+  if(window.storage){ try{ await window.storage.set('db_config', payload, true); }catch(e){} }
+  try{ localStorage.setItem('myclinic_db_config', payload); }catch(e){}
+}
+function openDBModal(){
+  $('cfg_rail').value=DB_CONFIG.RAILWAY_API||'';
+  $('cfg_url').value=DB_CONFIG.SUPABASE_URL||'';
+  $('cfg_key').value=DB_CONFIG.SUPABASE_KEY||'';
+  // default to Railway tab unless currently using Supabase
+  setDBTab(useSupabase()?'sb':'rail');
+  $('dbStatusBox').innerHTML = useRailway()
+    ? '🟢 Connected to your Railway backend.'
+    : useSupabase()
+      ? '🟢 Connected to your Supabase database.'
+      : '⚪ Not connected — using the built-in store.';
+  $('dbModal').classList.add('open');
+}
+function closeDBModal(){ $('dbModal').classList.remove('open'); }
+async function testDBConnection(){
+  if(dbTab==='rail'){
+    const url=$('cfg_rail').value.trim().replace(/\/+$/,'');
+    if(!url){ $('dbStatusBox').innerHTML='⚠ Enter your Railway API URL first.'; return; }
+    $('dbStatusBox').innerHTML='⏳ Testing Railway connection…';
+    try{
+      const res=await fetch(url+'/api/onboarding/health');
+      if(res.ok){
+        const j=await res.json().catch(()=>({}));
+        $('dbStatusBox').innerHTML='✅ Railway API reachable. <span class="hint">'+(j.ok?'/health → ok':'')+'</span>';
+        // also probe /doctors to verify DB attached
+        try{
+          const r2=await fetch(url+'/api/onboarding/doctors');
+          if(r2.ok){ $('dbStatusBox').innerHTML+='<br>✅ <code>doctors</code> endpoint OK — database attached.'; }
+          else{ $('dbStatusBox').innerHTML+='<br>⚠ /doctors returned '+r2.status+' — is Postgres attached and DATABASE_URL set on this service?'; }
+        }catch(e){}
+      } else {
+        const t=await res.text();
+        $('dbStatusBox').innerHTML='❌ Failed ('+res.status+'). '+esc(t.slice(0,180));
+      }
+    }catch(e){
+      $('dbStatusBox').innerHTML='❌ Could not reach the Railway server. If you\'re inside the Claude preview, the sandbox may block external calls — download the HTML and host it (Railway can serve the HTML too) for full access.';
+    }
+    return;
+  }
+  // Supabase test
+  const url=$('cfg_url').value.trim().replace(/\/+$/,''), key=$('cfg_key').value.trim();
+  if(!url||!key){ $('dbStatusBox').innerHTML='⚠ Enter both URL and Key first.'; return; }
+  $('dbStatusBox').innerHTML='⏳ Testing Supabase…';
+  try{
+    const res=await fetch(url+'/rest/v1/doctors?select=id&limit=1',{headers:{apikey:key,Authorization:'Bearer '+key}});
+    if(res.ok){ $('dbStatusBox').innerHTML='✅ Supabase reachable — the <code>doctors</code> table is OK.'; }
+    else{ const t=await res.text(); $('dbStatusBox').innerHTML='❌ Failed ('+res.status+'). '+esc(t.slice(0,180)); }
+  }catch(e){ $('dbStatusBox').innerHTML='❌ Could not reach Supabase.'; }
+}
+async function saveDBSettings(){
+  if(dbTab==='rail'){
+    const url=$('cfg_rail').value.trim().replace(/\/+$/,'');
+    if(!url && !confirm('Save with empty Railway URL? This will disable the Railway backend.')) return;
+    DB_CONFIG.RAILWAY_API=url;
+    // selecting Railway clears Supabase to avoid ambiguity (Railway takes priority anyway)
+    if(url){ DB_CONFIG.SUPABASE_URL=''; DB_CONFIG.SUPABASE_KEY=''; }
+  } else {
+    const url=$('cfg_url').value.trim().replace(/\/+$/,''), key=$('cfg_key').value.trim();
+    if((!url||!key) && !confirm('Save with empty URL/Key? This will disable Supabase.')) return;
+    DB_CONFIG.SUPABASE_URL=url; DB_CONFIG.SUPABASE_KEY=key;
+    if(url&&key){ DB_CONFIG.RAILWAY_API=''; }
+  }
+  await persistDBConfig();
+  toast(useCloudDB()?'Cloud database activated ✓':'Cloud database disabled');
+  closeDBModal(); refreshAdmin();
+}
+async function disconnectDB(){
+  if(!confirm('Disconnect from the cloud database? Records already in your database remain there.'))return;
+  DB_CONFIG.RAILWAY_API=''; DB_CONFIG.SUPABASE_URL=''; DB_CONFIG.SUPABASE_KEY='';
+  await persistDBConfig();
+  closeDBModal(); refreshAdmin();
+  toast('Disconnected');
+}
+async function migrateLocalToCloud(){
+  if(!useCloudDB()){ $('dbStatusBox').innerHTML='⚠ Save &amp; Activate Railway or Supabase first.'; return; }
+  if(!window.storage){ $('dbStatusBox').innerHTML='No local records to migrate.'; return; }
+  if(!confirm('Push all existing built-in-store records to the cloud database now?'))return;
+  $('dbStatusBox').innerHTML='⏳ Migrating records…';
+  try{
+    const r=await window.storage.list('doctors:', true);
+    const keys=(r&&r.keys)||[];
+    let ok=0, fail=0;
+    for(const k of keys){
+      try{
+        const v=await window.storage.get(k,true); if(!v||!v.value) continue;
+        const rec=JSON.parse(v.value);
+        const success=await saveDoctor(rec);
+        if(success) ok++; else fail++;
+      }catch(e){ fail++; }
+    }
+    $('dbStatusBox').innerHTML=`✅ Migrated ${ok} record${ok===1?'':'s'}${fail?', '+fail+' failed':''}.`;
+    refreshAdmin();
+  }catch(e){ $('dbStatusBox').innerHTML='❌ Migration error: '+esc(e.message||''); }
+}
+
+async function saveDoctor(rec){
+  if(useRailway()){
+    try{
+      const res=await fetch(railwayURL('/doctors'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rec)});
+      if(!res.ok) throw new Error('Railway '+res.status);
+      return true;
+    }catch(e){ console.error('Railway save failed, using fallback',e); }
+  } else if(useSupabase()){
+    try{
+      const res=await fetch(`${DB_CONFIG.SUPABASE_URL}/rest/v1/doctors?on_conflict=id`,{
+        method:'POST',
+        headers:{...sbHeaders(),'Prefer':'resolution=merge-duplicates,return=minimal'},
+        body:JSON.stringify({id:rec.id,created_at:rec.createdAt,data:rec})
+      });
+      if(!res.ok) throw new Error('DB '+res.status);
+      return true;
+    }catch(e){ console.error('Supabase save failed, using fallback',e); }
+  }
+  try{
+    if(window.storage){ await window.storage.set('doctors:'+rec.id, JSON.stringify(rec), true); return true; }
+  }catch(e){ console.error('storage save failed',e); }
+  return false; // kept in memory regardless
+}
+function mergeMemory(out){
+  // keep any in-memory records that the store didn't return (so this session never loses data)
+  out=out.filter(d=>d && d.id!==SETTINGS_ROW_ID && !d.__settings);  // never show the app-settings row as a "doctor"
+  const ids=new Set(out.map(d=>d.id));
+  allDoctors.forEach(d=>{ if(d.id!==SETTINGS_ROW_ID && !d.__settings && !ids.has(d.id)) out.push(d); });
+  out.sort((a,b)=>b.createdAt-a.createdAt);
+  allDoctors=out; return out;
+}
+async function loadDoctors(){
+  let out=[];
+  if(useRailway()){
+    try{
+      const res=await fetch(railwayURL('/doctors'));
+      if(res.ok){ out=await res.json(); return mergeMemory(out); }
+      throw new Error('Railway '+res.status);
+    }catch(e){ console.error('Railway load failed, using fallback',e); }
+  } else if(useSupabase()){
+    try{
+      const res=await fetch(`${DB_CONFIG.SUPABASE_URL}/rest/v1/doctors?select=data&order=created_at.desc`,{headers:sbHeaders()});
+      if(res.ok){
+        const rows=await res.json();
+        out=rows.map(r=>r.data).filter(Boolean);
+        return mergeMemory(out);
+      }
+      throw new Error('DB '+res.status);
+    }catch(e){ console.error('Supabase load failed, using fallback',e); }
+  }
+  try{
+    if(window.storage){
+      const r=await window.storage.list('doctors:', true);
+      const keys=(r&&r.keys)||[];
+      for(const k of keys){
+        try{ const v=await window.storage.get(k,true); if(v&&v.value)out.push(JSON.parse(v.value)); }catch(e){}
+      }
+    }
+  }catch(e){ console.error('storage load failed',e); }
+  return mergeMemory(out);
+}
+async function deleteDoctor(id){
+  allDoctors=allDoctors.filter(d=>d.id!==id); // remove from memory first
+  if(useRailway()){
+    try{
+      const res=await fetch(railwayURL('/doctors/'+encodeURIComponent(id)),{method:'DELETE'});
+      if(res.ok) return;
+    }catch(e){ console.error('Railway delete failed, using fallback',e); }
+  } else if(useSupabase()){
+    try{
+      const res=await fetch(`${DB_CONFIG.SUPABASE_URL}/rest/v1/doctors?id=eq.${encodeURIComponent(id)}`,{method:'DELETE',headers:sbHeaders()});
+      if(res.ok) return;
+    }catch(e){ console.error('Supabase delete failed, using fallback',e); }
+  }
+  try{ if(window.storage) await window.storage.delete('doctors:'+id, true); }catch(e){}
+}
+
+
+/* ============ SUBMIT ============ */
+async function submitForm(){
+  const d=gather();
+  const miss=[];
+  if(!d.nameEn)miss.push('English name');
+  if(!d.nameAr)miss.push('Arabic name');
+  if(!d.phone)miss.push('Phone');
+  if(!d.rankRaw)miss.push('Professional rank');
+  if(!d.specType)miss.push('Specialty type');
+  if(!d.specEn)miss.push('Specialty');
+  if(!d.locations.length)miss.push('At least one location');
+  if(!d.consent)miss.push('Marketing consent');
+  if(miss.length){toast('Please complete: '+miss.join(', '),true);return}
+  const btn=$('submitBtn');btn.disabled=true;btn.textContent='Saving…';
+  const rec={id:uid(),createdAt:Date.now(),...d,
+    appStatus:'not_yet',appDoneAt:null, webStatus:'not_yet', webDoneAt:null,
+    parkingStatus:'not_yet', parkingDoneAt:null, userStatus:'not_yet', userDoneAt:null};
+  // reflect immediately in the in-memory log so admin always sees it this session
+  allDoctors.unshift(rec);
+  try{
+    await saveDoctor(rec);            // best-effort persistence (never blocks UI)
+    $('formArea').classList.add('hide');
+    $('successScreen').classList.remove('hide');
+    $('successCardHolder').innerHTML=cardHTML(rec);
+    window._myCard=rec;
+    window.scrollTo({top:0,behavior:'smooth'});
+    toast('Profile submitted ✓');
+  }catch(e){
+    // still show success — data is held in memory and will sync when storage is reachable
+    $('formArea').classList.add('hide');
+    $('successScreen').classList.remove('hide');
+    $('successCardHolder').innerHTML=cardHTML(rec);
+    window._myCard=rec;
+    toast('Submitted ✓ (will sync to database when reachable)');
+  }
+  btn.disabled=false;btn.textContent='✓ Submit profile';
+}
+function resetForm(){
+  ['nameEn','nameAr','phone','subEn','subAr','expEn','expAr','ageGroup','specInput','specEn','specAr','rankOther','expInput'].forEach(i=>{if($(i))$(i).value=''});
+  ['nameAr','subAr','expAr'].forEach(i=>{if($(i))$(i).dataset.edited=''});
+  nameArEdited=false;
+  $('title').value='Dr.';
+  state={rank:'',rankOther:'',specType:'',privYN:'',consent:'',locations:[],hospitals:[],photo:'',creds:[],expertise:[]};
+  renderExpChips();
+  $('expInput').placeholder='Select specialty first…';
+  document.querySelectorAll('.sel').forEach(c=>c.classList.remove('sel'));
+  $('credRows').innerHTML='';credSeq=0;addCred();
+  $('privStep').classList.add('hide');$('hospWrap').classList.add('hide');
+  $('photoUp').classList.remove('has');
+  $('photoPrompt').innerHTML='<span style="font-size:28px">📷</span><br><b style="color:var(--navy)">Tap to upload photo</b><br><small class="hint">A clear portrait works best for the card</small>';
+  $('specInput').placeholder='Select specialty type first…';
+  $('successScreen').classList.add('hide');$('formArea').classList.remove('hide');
+  liveCard();window.scrollTo({top:0,behavior:'smooth'});
+}
+async function downloadMyCard(){ if(window._myCard) await exportCardsPDF([window._myCard]); }
+
+/* ============ MODE / ADMIN ============ */
+function setMode(m){
+  $('mDoctor').classList.toggle('active',m==='doctor');
+  $('mAdmin').classList.toggle('active',m==='admin');
+  $('doctorView').classList.toggle('hide',m!=='doctor');
+  $('adminView').classList.toggle('hide',m!=='admin');
+  if(m==='admin' && !$('adminPanel').classList.contains('hide')) refreshAdmin();
+}
+function tryLogin(){
+  if($('adminPass').value===ADMIN_PASS){
+    $('adminLock').classList.add('hide');$('adminPanel').classList.remove('hide');
+    refreshAdmin();
+  } else toast('Wrong passcode',true);
+}
+async function refreshAdmin(){
+  const s=$('dbStatus');
+  if(s) s.innerHTML = useCloudDB()
+    ? (useRailway()
+        ? '🟢 Connected to your Railway backend (Postgres).'
+        : '🟢 Connected to your Supabase database (Postgres).')
+    : '🔵 Using the built-in store. Click "⚙ Configure database" to connect Railway or Supabase.';
+  await loadDoctors(); renderLog(); renderGallery();
+}
+function setTab(t){
+  $('tabLog').classList.toggle('active',t==='log');
+  $('tabCards').classList.toggle('active',t==='cards');
+  $('tabSettings').classList.toggle('active',t==='settings');
+  $('logTab').classList.toggle('hide',t!=='log');
+  $('cardsTab').classList.toggle('hide',t!=='cards');
+  $('settingsTab').classList.toggle('hide',t!=='settings');
+  if(t==='cards')renderGallery();
+  if(t==='settings')openSettingsTab();
+}
+
+/* ============ FILTERS + LOG ============ */
+function clearFilters(){['fMonth','fDate','fBranch','fSpec'].forEach(i=>$(i).value='');renderLog()}
+function applyFilters(list){
+  const mon=$('fMonth').value, day=$('fDate').value, br=$('fBranch').value, sp=$('fSpec').value;
+  return list.filter(d=>{
+    const dt=new Date(d.createdAt);
+    const ym=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');
+    const ymd=ym+'-'+String(dt.getDate()).padStart(2,'0');
+    if(mon&&ym!==mon)return false;
+    if(day&&ymd!==day)return false;
+    if(br&&!d.locations.includes(br))return false;
+    if(sp&&d.specEn!==sp)return false;
+    return true;
+  });
+}
+function fmtDate(ts){const d=new Date(ts);return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
+function renderLog(){
+  const rows=applyFilters(allDoctors);
+  $('logEmpty').classList.toggle('hide',rows.length>0);
+  $('logTable').classList.toggle('hide',rows.length===0);
+  $('logBody').innerHTML=rows.map(d=>{
+    const credSum=d.creds.filter(c=>c.field||c.country).map(c=>credLabel(c)).join('; ')||'—';
+    const priv=d.specType==='surgical'?(d.privYN==='yes'?(d.hospitals.join(', ')||'Yes'):'No'):'N/A';
+    return `<tr>
+      <td style="white-space:nowrap">${fmtDate(d.createdAt)}</td>
+      <td><b>${esc(d.nameEn)}</b><div class="ar" style="color:var(--slate);font-size:12px">${esc(d.nameAr)}</div></td>
+      <td style="white-space:nowrap">${esc(d.phone)}</td>
+      <td>${esc(d.title)} ${esc(d.rank)}</td>
+      <td><span class="tag">${esc(d.specEn)}</span><div style="font-size:11px;color:var(--slate);margin-top:2px">${d.specType}</div></td>
+      <td>${esc(d.subEn)||'—'}</td>
+      <td style="max-width:200px;font-size:12px">${esc(credSum)}</td>
+      <td style="max-width:160px;font-size:12px">${esc(d.expEn)||'—'}</td>
+      <td>${d.locations.map(l=>`<span class="tag tiny">${esc(l)}</span>`).join('')}</td>
+      <td>${esc(d.ageGroup)||'—'}</td>
+      <td style="font-size:12px">${esc(priv)}</td>
+      <td><span class="tag" style="background:${d.consent==='Yes'?'#e7f7ee':'#fdeaec'};color:${d.consent==='Yes'?'#16a34a':'#e23b4e'}">${esc(d.consent)}</span></td>
+      <td>${statusCell(d,'app')}</td>
+      <td>${statusCell(d,'web')}</td>
+      <td>${statusCell(d,'parking','Yes','No')}</td>
+      <td>${statusCell(d,'user','Yes','No')}</td>
+      <td><div class="act-btns">
+        <button title="View / Edit" onclick="openEdit('${d.id}')">✏️</button>
+        <button title="Download card" onclick="dlOne('${d.id}')">⬇</button>
+        <button title="Delete" onclick="removeDoc('${d.id}')">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+/* status columns: 'app','web' use Done/Not yet; 'parking','user' use Yes/No */
+const STATUS_FIELDS={
+  app:    { field:'appStatus',     stamp:'appDoneAt' },
+  web:    { field:'webStatus',     stamp:'webDoneAt' },
+  parking:{ field:'parkingStatus', stamp:'parkingDoneAt' },
+  user:   { field:'userStatus',    stamp:'userDoneAt' }
+};
+function statusCell(d,kind,labelDone,labelPending){
+  const cfg=STATUS_FIELDS[kind];
+  const val=d[cfg.field]||'not_yet';
+  const at=d[cfg.stamp];
+  const cls=val==='done'?'done':'pend';
+  const doneLabel=labelDone||'Done ✓';
+  const pendLabel=labelPending||'Not yet';
+  return `<select class="status-sel ${cls}" onchange="setStatus('${d.id}','${kind}',this.value)">
+      <option value="not_yet" ${val!=='done'?'selected':''}>${esc(pendLabel)}</option>
+      <option value="done" ${val==='done'?'selected':''}>${esc(doneLabel)}</option>
+    </select>${val==='done'&&at?`<span class="stamp">⏱ ${fmtDate(at)}</span>`:''}`;
+}
+async function setStatus(id,kind,val){
+  const d=allDoctors.find(x=>x.id===id);if(!d)return;
+  const cfg=STATUS_FIELDS[kind];
+  const now=Date.now();
+  const previousValue=d[cfg.field]||'not_yet';
+  d[cfg.field]=val;
+  d[cfg.stamp]= val==='done' ? now : null;
+  await saveDoctor(d); renderLog();
+  // ---- Email triggers (fire the right one once, on transition to Done) ----
+  const firstTimeDone = val==='done' && previousValue!=='done';
+  if(firstTimeDone && kind==='app'){
+    fireEmailPopup(buildHrToItEmail(d));
+  } else if(firstTimeDone && kind==='user'){
+    fireEmailPopup(buildOpsEmail(d));
+  } else {
+    toast(val==='done'?'Marked Done · time captured ✓':'Reset to Not yet');
+  }
+}
+async function removeDoc(id){
+  if(!confirm('Delete this submission permanently?'))return;
+  await deleteDoctor(id);await loadDoctors();renderLog();renderGallery();toast('Deleted');
+}
+
+/* ============ APP SETTINGS (persisted) ============ */
+const DEFAULT_SETTINGS = {
+  emails: {
+    hrToIt: {
+      to: 'itsupport@myclinic.com.sa',
+      cc: '',
+      subject: 'Create user',
+      body: 'Dear IT Team,\n\nThe HR application for the doctor below has been completed. Please kindly create the user account and grant the necessary system access, and update the needed data.\n\nDoctor\u2019s full name: {fullName}\nPhone: {phone}\nSpecialty: {specialty}\nLocation: {location}\n\nThank you.'
+    },
+    opsEmail: {
+      to: 'ClinicalOperations@myclinic.com.sa',
+      cc: '',
+      subject: 'Open clinic',
+      body: 'Dear Clinical Operations Team,\n\nPlease kindly open a clinic for the doctor below.\n\nDoctor\u2019s full name: {fullName}\nSpecialty: {specialty}\nLocation: {location}\n\nThank you.'
+    }
+  },
+  customSpecialties: [],   // [{en, ar, type:'surgical'|'medical'|'both'}, ...]
+  customSubs: {}           // {'SpecialtyEn': [[en, ar], [en, ar]], ...}
+};
+let APP_SETTINGS = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+const SETTINGS_ROW_ID = '__app_settings__';
+
+function mergeSettings(incoming){
+  const out = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+  if(incoming && typeof incoming==='object'){
+    if(incoming.emails){
+      if(incoming.emails.hrToIt) Object.assign(out.emails.hrToIt, incoming.emails.hrToIt);
+      if(incoming.emails.opsEmail) Object.assign(out.emails.opsEmail, incoming.emails.opsEmail);
+    }
+    if(Array.isArray(incoming.customSpecialties)) out.customSpecialties = incoming.customSpecialties.filter(s=>s&&s.en);
+    if(incoming.customSubs && typeof incoming.customSubs==='object') out.customSubs = incoming.customSubs;
+  }
+  return out;
+}
+
+async function loadAppSettings(){
+  // Server-side first (Postgres via existing /doctors endpoint with a sentinel ID)
+  if(useRailway()){
+    try{
+      const res=await fetch(railwayURL('/doctors/'+SETTINGS_ROW_ID));
+      if(res.ok){
+        const obj=await res.json();
+        if(obj && obj.settings){ APP_SETTINGS=mergeSettings(obj.settings); applyCustomToMedDict(); return; }
+      }
+    }catch(e){}
+  }
+  // Local fallbacks
+  if(window.storage){
+    try{
+      const v=await window.storage.get('app_settings',true);
+      if(v && v.value){ APP_SETTINGS=mergeSettings(JSON.parse(v.value)); applyCustomToMedDict(); return; }
+    }catch(e){}
+  }
+  try{
+    const raw=localStorage.getItem('myclinic_app_settings');
+    if(raw){ APP_SETTINGS=mergeSettings(JSON.parse(raw)); applyCustomToMedDict(); }
+  }catch(e){}
+}
+
+async function saveAppSettings(){
+  const payload=JSON.stringify(APP_SETTINGS);
+  if(window.storage){ try{ await window.storage.set('app_settings', payload, true); }catch(e){} }
+  try{ localStorage.setItem('myclinic_app_settings', payload); }catch(e){}
+  if(useRailway()){
+    try{
+      await fetch(railwayURL('/doctors'),{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({id:SETTINGS_ROW_ID, createdAt:0, __settings:true, settings:APP_SETTINGS})
+      });
+    }catch(e){ console.error('settings server sync failed', e); }
+  }
+}
+
+function applyCustomToMedDict(){
+  if(typeof MED_DICT==='undefined') return;
+  (APP_SETTINGS.customSpecialties||[]).forEach(s=>{
+    if(s.en && s.ar) MED_DICT[s.en.toLowerCase()]=s.ar;
+  });
+  Object.entries(APP_SETTINGS.customSubs||{}).forEach(([sp, arr])=>{
+    (arr||[]).forEach(([en,ar])=>{ if(en && ar) MED_DICT[en.toLowerCase()]=ar; });
+  });
+}
+
+/* helpers used everywhere instead of bare SPECIALTIES / SUBS[x] */
+function allSpecs(){ return SPECIALTIES.concat(APP_SETTINGS.customSpecialties||[]); }
+function subsFor(specEn){
+  const base = SUBS[specEn] || [];
+  const custom = (APP_SETTINGS.customSubs && APP_SETTINGS.customSubs[specEn]) || [];
+  return base.concat(custom);
+}
+function isBuiltInSpec(en){ return SPECIALTIES.some(s=>s.en===en); }
+
+/* ---- Settings tab UI ---- */
+function openSettingsTab(){
+  $('setHrTo').value=APP_SETTINGS.emails.hrToIt.to;
+  $('setHrCc').value=APP_SETTINGS.emails.hrToIt.cc;
+  $('setHrSubject').value=APP_SETTINGS.emails.hrToIt.subject;
+  $('setHrBody').value=APP_SETTINGS.emails.hrToIt.body;
+  $('setOpsTo').value=APP_SETTINGS.emails.opsEmail.to;
+  $('setOpsCc').value=APP_SETTINGS.emails.opsEmail.cc;
+  $('setOpsSubject').value=APP_SETTINGS.emails.opsEmail.subject;
+  $('setOpsBody').value=APP_SETTINGS.emails.opsEmail.body;
+  renderCustomSubList();
+  renderSubSpecDropdown();
+}
+async function saveAppSettingsFromUI(){
+  APP_SETTINGS.emails.hrToIt={to:$('setHrTo').value.trim(), cc:$('setHrCc').value.trim(), subject:$('setHrSubject').value.trim(), body:$('setHrBody').value};
+  APP_SETTINGS.emails.opsEmail={to:$('setOpsTo').value.trim(), cc:$('setOpsCc').value.trim(), subject:$('setOpsSubject').value.trim(), body:$('setOpsBody').value};
+  await saveAppSettings();
+  $('setStatus').textContent='Saved ✓ '+new Date().toLocaleTimeString();
+  toast('Settings saved ✓');
+  // Refresh anywhere specialties may already be rendered
+  if(typeof renderForm==='function') renderForm();
+}
+async function reloadAppSettings(){
+  await loadAppSettings();
+  openSettingsTab();
+  toast('Settings reloaded');
+}
+async function resetAppSettings(){
+  if(!confirm('Reset all settings to defaults? Email templates and custom specialties will be lost.')) return;
+  APP_SETTINGS=JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+  await saveAppSettings();
+  openSettingsTab();
+  toast('Settings reset to defaults');
+}
+function renderCustomSpecList(){
+  const list=APP_SETTINGS.customSpecialties||[];
+  if(!list.length){ $('customSpecList').innerHTML='<div class="hint">No custom specialties yet.</div>'; return; }
+  $('customSpecList').innerHTML=list.map((s,i)=>`
+    <div class="set-item">
+      <span class="en">${esc(s.en)}</span>
+      <span class="ar">${esc(s.ar||'')}</span>
+      <span class="typ">${esc(s.type||'medical')}</span>
+      <button class="rm" onclick="removeCustomSpec(${i})" title="Remove">✕</button>
+    </div>`).join('');
+}
+function renderSubSpecDropdown(){
+  const sel=$('addSubSpec');
+  sel.innerHTML=allSpecs().map(s=>`<option value="${esc(s.en)}">${esc(s.en)}</option>`).join('');
+}
+function renderCustomSubList(){
+  const obj=APP_SETTINGS.customSubs||{};
+  const rows=[];
+  Object.entries(obj).forEach(([sp, arr])=>{
+    (arr||[]).forEach((pair,i)=>{
+      const [en,ar]=pair;
+      rows.push({sp,i,en,ar});
+    });
+  });
+  if(!rows.length){ $('customSubList').innerHTML='<div class="hint">No custom subspecialties yet.</div>'; return; }
+  $('customSubList').innerHTML=rows.map(r=>`
+    <div class="set-item">
+      <span class="typ" style="background:var(--soft)">${esc(r.sp)}</span>
+      <span class="en">${esc(r.en)}</span>
+      <span class="ar">${esc(r.ar||'')}</span>
+      <button class="rm" onclick="removeCustomSub('${esc(r.sp).replace(/'/g,'\\\u0027')}',${r.i})" title="Remove">✕</button>
+    </div>`).join('');
+}
+async function addCustomSpecialty(){
+  const en=$('addSpecEn').value.trim();
+  const ar=$('addSpecAr').value.trim();
+  const type=$('addSpecType').value;
+  if(!en){ toast('Specialty name (English) is required',true); return; }
+  if(allSpecs().some(s=>s.en.toLowerCase()===en.toLowerCase())){ toast('That specialty already exists',true); return; }
+  APP_SETTINGS.customSpecialties.push({en, ar, type});
+  await saveAppSettings();
+  applyCustomToMedDict();
+  $('addSpecEn').value=''; $('addSpecAr').value='';
+  renderCustomSpecList(); renderSubSpecDropdown();
+  toast('Specialty added ✓');
+}
+async function removeCustomSpec(idx){
+  const s=APP_SETTINGS.customSpecialties[idx]; if(!s) return;
+  if(!confirm('Remove "'+s.en+'"? Doctors already using it remain in the database.')) return;
+  APP_SETTINGS.customSpecialties.splice(idx,1);
+  await saveAppSettings();
+  renderCustomSpecList(); renderSubSpecDropdown(); renderCustomSubList();
+}
+async function addCustomSub(){
+  const sp=$('addSubSpec').value;
+  let en=$('addSubEn').value.trim();
+  let ar=$('addSubAr').value.trim();
+  if(!sp){ toast('Pick a specialty first',true); return; }
+  if(!en){ toast('Subspecialty name (English) is required',true); return; }
+  if(!ar) ar=translateMed(en);
+  // dedupe against built-in + custom under this specialty
+  const existing=subsFor(sp).map(x=>x[0].toLowerCase());
+  if(existing.includes(en.toLowerCase())){ toast('That subspecialty already exists for '+sp,true); return; }
+  if(!APP_SETTINGS.customSubs[sp]) APP_SETTINGS.customSubs[sp]=[];
+  APP_SETTINGS.customSubs[sp].push([en, ar]);
+  await saveAppSettings();
+  applyCustomToMedDict();
+  $('addSubEn').value=''; $('addSubAr').value='';
+  renderCustomSubList();
+  toast('Subspecialty added ✓');
+}
+async function removeCustomSub(sp, idx){
+  const arr=APP_SETTINGS.customSubs[sp]; if(!arr) return;
+  const item=arr[idx]; if(!item) return;
+  if(!confirm('Remove "'+item[0]+'" from '+sp+'?')) return;
+  arr.splice(idx,1);
+  if(!arr.length) delete APP_SETTINGS.customSubs[sp];
+  await saveAppSettings();
+  renderCustomSubList();
+}
+
+/* ============ AUTOMATIC EMAIL TRIGGERS ============ */
+function emailFields(d){
+  return {
+    fullName:[d.title,d.nameEn].filter(Boolean).join(' ').trim() || d.nameEn || 'Doctor',
+    specialty:[d.subEn,d.specEn].filter(Boolean).join(' \u2014 ') || d.specEn || '\u2014',
+    location:(d.locations||[]).join(', ') || '\u2014',
+    phone:d.phone || '\u2014'
+  };
+}
+function applyTpl(tpl, fields){
+  return (tpl||'').replace(/\{(\w+)\}/g, (m,k)=> (fields[k]!==undefined ? fields[k] : m));
+}
+function buildHrToItEmail(d){
+  const f=emailFields(d), t=APP_SETTINGS.emails.hrToIt;
+  return {to:t.to, cc:t.cc, subject:applyTpl(t.subject,f), body:applyTpl(t.body,f)};
+}
+function buildOpsEmail(d){
+  const f=emailFields(d), t=APP_SETTINGS.emails.opsEmail;
+  return {to:t.to, cc:t.cc, subject:applyTpl(t.subject,f), body:applyTpl(t.body,f)};
+}
+function fireEmailPopup(e){
+  window._emailDraft=e;
+  $('em_to').textContent=e.to + (e.cc?' (cc: '+e.cc+')':'');
+  $('em_subject').textContent=e.subject;
+  $('em_body').textContent=e.body;
+  openInMailApp();
+  toast('Opening your mail app\u2026 \u2709\ufe0f');
+  setTimeout(()=>{
+    if(document.hasFocus()){
+      $('emailModal').classList.add('open');
+      toast('Mail app didn\u2019t open \u2014 use the preview to copy or open manually',true);
+    }
+  },1500);
+}
+function buildUserCreatedEmail(d){ return buildOpsEmail(d); }
+function showUserCreatedEmail(d){ return fireEmailPopup(buildOpsEmail(d)); }
+function closeEmailModal(){ $('emailModal').classList.remove('open'); }
+function copyEmail(){
+  const e=window._emailDraft; if(!e)return;
+  const text=`To: ${e.to}\nSubject: ${e.subject}\n\n${e.body}`;
+  navigator.clipboard.writeText(text).then(
+    ()=>toast('Copied to clipboard ✓'),
+    ()=>{
+      const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select();
+      try{ document.execCommand('copy'); toast('Copied ✓'); }catch(err){ toast('Copy failed — select and copy manually',true); }
+      ta.remove();
+    }
+  );
+}
+function openInMailApp(){
+  const e=window._emailDraft; if(!e)return;
+  let url='mailto:'+encodeURIComponent(e.to)
+    +'?subject='+encodeURIComponent(e.subject)
+    +'&body='+encodeURIComponent(e.body);
+  if(e.cc) url+='&cc='+encodeURIComponent(e.cc);
+  // Use a temporary anchor so the current page stays where it is
+  const a=document.createElement('a'); a.href=url; a.style.display='none';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+/* ============ EXCEL EXPORT ============ */
+function exportExcel(){
+  const rows=applyFilters(allDoctors);
+  if(!rows.length){toast('Nothing to export',true);return}
+  const data=rows.map(d=>({
+    'Submitted':fmtDate(d.createdAt),
+    'Name (EN)':d.nameEn,'Name (AR)':d.nameAr,'Phone':d.phone,
+    'Title':d.title,'Rank':d.rank,'Specialty Type':d.specType,
+    'Specialty (EN)':d.specEn,'Specialty (AR)':d.specAr,
+    'Subspecialty (EN)':d.subEn,'Subspecialty (AR)':d.subAr,
+    'Credentials':d.creds.filter(c=>c.field||c.country).map(c=>credLabel(c)).join(' | '),
+    'Expertise (EN)':d.expEn,'Expertise (AR)':d.expAr,
+    'Locations':d.locations.join(', '),'Age Group':d.ageGroup,
+    'Hospital Privileges':d.specType==='surgical'?(d.privYN==='yes'?d.hospitals.join(', '):'No'):'N/A',
+    'Consent':d.consent,
+    'Application':d.appStatus==='done'?'Done':'Not yet',
+    'Application Time':d.appDoneAt?fmtDate(d.appDoneAt):'',
+    'Web Page':d.webStatus==='done'?'Done':'Not yet',
+    'Web Page Time':d.webDoneAt?fmtDate(d.webDoneAt):'',
+    'Parking Space':d.parkingStatus==='done'?'Yes':'No',
+    'Parking Space Time':d.parkingDoneAt?fmtDate(d.parkingDoneAt):'',
+    'User Created':d.userStatus==='done'?'Yes':'No',
+    'User Created Time':d.userDoneAt?fmtDate(d.userDoneAt):''
+  }));
+  const ws=XLSX.utils.json_to_sheet(data);
+  ws['!cols']=Object.keys(data[0]).map(k=>({wch:Math.max(12,k.length+2)}));
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Doctors');
+  const stamp=new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb,`MyClinic_Doctors_${stamp}.xlsx`);
+  toast('Excel exported ✓');
+}
+
+/* ============ CARDS GALLERY ============ */
+function renderGallery(){
+  const list=allDoctors;
+  $('galEmpty').classList.toggle('hide',list.length>0);
+  $('galGrid').innerHTML=list.map(d=>`
+    <div class="gal-item">
+      <div class="gal-check ${selectedCards.has(d.id)?'on':''}" onclick="toggleSel('${d.id}')">${selectedCards.has(d.id)?'✓':''}</div>
+      <div onclick="openEdit('${d.id}')">${cardHTML(d)}</div>
+      <div class="gal-mini-actions">
+        <button class="btn btn-ghost btn-sm" onclick="dlOne('${d.id}')">⬇ PDF</button>
+        ${d.photo?`<button class="btn btn-ghost btn-sm" onclick="downloadPhotoJPG('${d.id}')" title="Download photo as JPG">🖼 JPG</button>`:''}
+        <button class="btn btn-ghost btn-sm" onclick="openEdit('${d.id}')">✏️ Edit</button>
+      </div>
+    </div>`).join('');
+  updateGalCount();
+}
+function toggleSel(id){ if(selectedCards.has(id))selectedCards.delete(id);else selectedCards.add(id); renderGallery(); }
+function selectAllCards(on){ selectedCards=on?new Set(allDoctors.map(d=>d.id)):new Set(); renderGallery(); }
+function updateGalCount(){ $('galCount').textContent=`${selectedCards.size} selected · ${allDoctors.length} total`; }
+
+/* ============ PDF EXPORT ============ */
+async function dlOne(id){ const d=allDoctors.find(x=>x.id===id); if(d) await exportCardsPDF([d]); }
+async function downloadSelected(){
+  const list=allDoctors.filter(d=>selectedCards.has(d.id));
+  if(!list.length){toast('Select at least one card',true);return}
+  await exportCardsPDF(list);
+}
+async function exportCardsPDF(list){
+  toast('Generating PDF…');
+  await document.fonts.ready;
+  const {jsPDF}=window.jspdf;
+  const stage=$('pdfStage');
+  let pdf=null;
+  for(let i=0;i<list.length;i++){
+    stage.innerHTML=cardHTML(list[i]);
+    const el=stage.querySelector('.doc-card');
+    el.style.width='460px';
+    await new Promise(r=>setTimeout(r,120));
+    const canvas=await html2canvas(el,{scale:3,useCORS:true,backgroundColor:null,logging:false});
+    const img=canvas.toDataURL('image/png');
+    const w=canvas.width, h=canvas.height;
+    if(i===0) pdf=new jsPDF({orientation:h>w?'p':'l',unit:'px',format:[w,h]});
+    else pdf.addPage([w,h], h>w?'p':'l');
+    pdf.addImage(img,'PNG',0,0,w,h);
+  }
+  const name=list.length===1?`MyClinic_${(list[0].nameEn||'card').replace(/\s+/g,'_')}.pdf`:`MyClinic_Cards_${list.length}.pdf`;
+  pdf.save(name);
+  stage.innerHTML='';
+  toast(`Downloaded ${list.length} card${list.length>1?'s':''} ✓`);
+}
+
+/* ============ PHOTO MANAGEMENT (admin) ============ */
+async function photoToJPGBlob(d){
+  if(!d.photo) return null;
+  return new Promise((resolve,reject)=>{
+    const img=new Image(); img.crossOrigin='anonymous';
+    img.onload=()=>{
+      try{
+        const c=document.createElement('canvas');
+        c.width=img.naturalWidth||img.width; c.height=img.naturalHeight||img.height;
+        const ctx=c.getContext('2d');
+        ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,c.width,c.height);
+        ctx.drawImage(img,0,0);
+        c.toBlob(b=>resolve(b),'image/jpeg',0.92);
+      }catch(e){reject(e);}
+    };
+    img.onerror=reject;
+    img.src=d.photo;
+  });
+}
+function safeName(d){ return (d.nameEn||'doctor').replace(/[^A-Za-z0-9]+/g,'_').replace(/^_+|_+$/g,'')||'doctor'; }
+function triggerDownload(blob,filename){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+async function downloadPhotoJPG(id){
+  const d=allDoctors.find(x=>x.id===id);
+  if(!d||!d.photo){ toast('No photo on file',true); return; }
+  try{
+    const blob=await photoToJPGBlob(d);
+    if(!blob){ toast('Could not convert image',true); return; }
+    triggerDownload(blob,`MyClinic_${safeName(d)}.jpg`);
+    toast('Photo downloaded as JPG ✓');
+  }catch(e){ console.error(e); toast('Could not convert image',true); }
+}
+async function downloadPhotosFor(list,labelSuffix){
+  list=list.filter(d=>d.photo);
+  if(!list.length){ toast('No photos to download',true); return; }
+  if(list.length===1){ return downloadPhotoJPG(list[0].id); }
+  toast(`Preparing ${list.length} photos…`);
+  try{
+    const zip=new JSZip();
+    const used=new Set();
+    for(const d of list){
+      try{
+        const blob=await photoToJPGBlob(d); if(!blob)continue;
+        let name=`MyClinic_${safeName(d)}.jpg`;
+        let n=2; while(used.has(name)){ name=`MyClinic_${safeName(d)}_${n++}.jpg`; }
+        used.add(name);
+        zip.file(name, blob);
+      }catch(e){ console.error('skip',d.id,e); }
+    }
+    const out=await zip.generateAsync({type:'blob'});
+    const stamp=new Date().toISOString().slice(0,10);
+    triggerDownload(out, `MyClinic_Photos_${labelSuffix||list.length}_${stamp}.zip`);
+    toast(`Downloaded ${list.length} photos as ZIP ✓`);
+  }catch(e){ console.error(e); toast('ZIP creation failed',true); }
+}
+function downloadSelectedPhotos(){
+  const list=allDoctors.filter(d=>selectedCards.has(d.id));
+  if(!list.length){ toast('Select at least one card',true); return; }
+  downloadPhotosFor(list,`selected_${list.length}`);
+}
+function downloadFilteredPhotos(){
+  const list=applyFilters(allDoctors);
+  downloadPhotosFor(list,'filtered');
+}
+function changePhoto(id){
+  const d=allDoctors.find(x=>x.id===id); if(!d)return;
+  const inp=document.createElement('input');
+  inp.type='file'; inp.accept='image/*';
+  inp.onchange=()=>{
+    const f=inp.files&&inp.files[0]; if(!f)return;
+    const r=new FileReader();
+    r.onload=async e=>{
+      d.photo=e.target.result;
+      await saveDoctor(d);
+      renderLog(); renderGallery();
+      if(editingId===id) updateEditPhoto();
+      toast('Photo updated ✓');
+    };
+    r.readAsDataURL(f);
+  };
+  inp.click();
+}
+async function removePhoto(id){
+  if(!confirm("Remove this doctor's photo?"))return;
+  const d=allDoctors.find(x=>x.id===id); if(!d)return;
+  d.photo='';
+  await saveDoctor(d);
+  renderLog(); renderGallery();
+  if(editingId===id) updateEditPhoto();
+  toast('Photo removed');
+}
+function editPhotoHTML(d){
+  return `<div style="display:flex;gap:14px;align-items:center;padding:14px;background:var(--soft);border:1px solid var(--line);border-radius:13px;margin-bottom:16px">
+    <div style="width:86px;height:86px;border-radius:12px;overflow:hidden;background:linear-gradient(160deg,#bcd3ee,#0a2a5e);flex-shrink:0;display:grid;place-items:center;box-shadow:0 4px 12px -4px rgba(10,42,94,.3)">
+      ${d.photo?`<img src="${d.photo}" style="width:100%;height:100%;object-fit:cover">`:'<span style="color:#fff;font-size:30px">📷</span>'}
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:7px">
+      <b style="color:var(--navy);font-size:13px">Doctor Photo</b>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        <button class="btn btn-ghost btn-sm" type="button" onclick="changePhoto('${d.id}')">📷 ${d.photo?'Change':'Upload'}</button>
+        ${d.photo?`<button class="btn btn-primary btn-sm" type="button" onclick="downloadPhotoJPG('${d.id}')">⬇ Download JPG</button>
+        <button class="btn btn-ghost btn-sm" type="button" onclick="removePhoto('${d.id}')" style="color:var(--red)">🗑 Remove</button>`:''}
+      </div>
+    </div>
+  </div>`;
+}
+function updateEditPhoto(){
+  const d=allDoctors.find(x=>x.id===editingId); if(!d)return;
+  const wrap=$('ed_photoBox'); if(wrap) wrap.outerHTML=`<div id="ed_photoBox">${editPhotoHTML(d)}</div>`;
+}
+
+/* ============ EDIT MODAL ============ */
+const EDIT_FIELDS=[
+  ['nameEn','Name (English)','text'],['nameAr','Name (Arabic)','text'],
+  ['phone','Phone','text'],['subEn','Subspecialty (EN)','text'],['subAr','Subspecialty (AR)','text'],
+  ['ageGroup','Age Group','text']
+];
+let editExp=[], editExpFiltered=[], editExpHi=-1;
+
+function editExpPool(){
+  const d=allDoctors.find(x=>x.id===editingId)||{};
+  const sp=d.specEn||'';
+  if(!sp) return [];
+  const pool=(EXPERTISE[sp]||[]).slice();
+  subsFor(sp).forEach(([en,ar])=>{ if(!pool.some(p=>p[0]===en)) pool.push([en,ar]); });
+  return pool;
+}
+function renderEditExpChips(){
+  $('ed_expChips').innerHTML=editExp.map((x,i)=>`<div class="chip sel" title="${esc(x.ar)}" onclick="removeEditExp(${i})">${esc(x.en)} <span style="opacity:.75">✕</span></div>`).join('');
+  $('ed_expEn').value=editExp.map(x=>x.en).join(', ');
+  if($('ed_expAr').dataset.edited!=='1') $('ed_expAr').value=editExp.map(x=>x.ar).join('، ');
+}
+function filterEditExp(q){
+  q=(q||'').toLowerCase().trim();
+  const chosen=new Set(editExp.map(x=>x.en.toLowerCase()));
+  editExpFiltered=editExpPool().filter(([en,ar])=>!chosen.has(en.toLowerCase()) && (en.toLowerCase().includes(q)||ar.includes(q)));
+  editExpHi=-1;
+  const L=$('ed_expList');
+  let html=editExpFiltered.map(([en,ar],i)=>`<div class="combo-opt" data-i="${i}" onmousedown="addEditExp(${i})"><span class="en">${esc(en)}</span><span class="ar">${esc(ar)}</span></div>`).join('');
+  const typed=$('ed_expInput').value.trim();
+  if(typed && !editExpFiltered.some(([en])=>en.toLowerCase()===typed.toLowerCase()) && !chosen.has(typed.toLowerCase())){
+    html+=`<div class="combo-opt" onmousedown="addEditExpCustom()"><span class="en">➕ Add "${esc(typed)}"</span><span class="ar">إضافة مخصصة</span></div>`;
+  }
+  if(!html) html='<div class="combo-empty">No matches — type to add a custom area</div>';
+  L.innerHTML=html; L.classList.add('open');
+}
+function openEditExp(){ filterEditExp($('ed_expInput').value); }
+function addEditExp(i){
+  const item=editExpFiltered[i]; if(!item)return;
+  editExp.push({en:item[0],ar:item[1]});
+  $('ed_expInput').value=''; renderEditExpChips(); filterEditExp('');
+}
+function addEditExpCustom(){
+  const v=$('ed_expInput').value.trim(); if(!v)return;
+  if(editExp.some(x=>x.en.toLowerCase()===v.toLowerCase())){$('ed_expInput').value='';return}
+  editExp.push({en:v, ar:translateMed(v)});
+  $('ed_expInput').value=''; renderEditExpChips(); filterEditExp('');
+}
+function removeEditExp(i){ editExp.splice(i,1); renderEditExpChips(); }
+function editExpKey(e){
+  const L=$('ed_expList'); if(!L||!L.classList.contains('open'))return;
+  const opts=L.querySelectorAll('.combo-opt'); if(!opts.length)return;
+  if(e.key==='ArrowDown'){e.preventDefault();editExpHi=Math.min(editExpHi+1,opts.length-1)}
+  else if(e.key==='ArrowUp'){e.preventDefault();editExpHi=Math.max(editExpHi-1,0)}
+  else if(e.key==='Enter'){e.preventDefault(); if(editExpHi>=0){opts[editExpHi].dispatchEvent(new Event('mousedown'))} else if($('ed_expInput').value.trim()){addEditExpCustom()} return;}
+  else if(e.key==='Escape'){L.classList.remove('open');return}
+  opts.forEach((o,i)=>o.classList.toggle('hi',i===editExpHi));
+  if(opts[editExpHi])opts[editExpHi].scrollIntoView({block:'nearest'});
+}
+function deriveEditExp(d){
+  if(Array.isArray(d.expertise)&&d.expertise.length) return d.expertise.map(x=>({...x}));
+  // backward-compat: parse from comma-separated expEn / expAr
+  const ens=(d.expEn||'').split(/\s*,\s*/).filter(Boolean);
+  const ars=(d.expAr||'').split(/\s*[،,]\s*/).filter(Boolean);
+  return ens.map((en,i)=>({en, ar: ars[i]||translateMed(en)}));
+}
+
+function openEdit(id){
+  const d=allDoctors.find(x=>x.id===id);if(!d)return;
+  editingId=id;
+  editExp=deriveEditExp(d);
+  $('editTitle').textContent='Edit · '+(d.nameEn||'Doctor');
+  const sp=d.specEn||'';
+  const expSection=`
+    <div class="field"><label class="fl">Areas of Expertise (English) <span class="hint" style="text-transform:none;font-weight:400">— ${sp?'suggested by '+esc(sp):'add manually'} · click chip ✕ to remove</span></label>
+      <div class="chips" id="ed_expChips" style="margin-bottom:9px"></div>
+      <div class="combo">
+        <input type="text" id="ed_expInput" placeholder="${sp?'Add areas of expertise…':'Type to add…'}" autocomplete="off" oninput="filterEditExp(this.value)" onfocus="openEditExp()" onkeydown="editExpKey(event)">
+        <div class="combo-list" id="ed_expList"></div>
+      </div>
+      <input type="hidden" id="ed_expEn">
+    </div>
+    <div class="field"><label class="fl">مجالات الخبرة (عربي) <span class="hint" style="text-transform:none;font-weight:400">يمكن التعديل</span></label>
+      <div class="with-trans">
+        <input type="text" id="ed_expAr" class="ar" placeholder="ترجمة تلقائية من الاختيارات" oninput="this.dataset.edited='1'">
+        <button class="trans-btn" title="Rebuild Arabic from selections" onclick="$('ed_expAr').dataset.edited='';renderEditExpChips()">🔄</button>
+      </div>
+    </div>`;
+  $('editFields').innerHTML=`<div id="ed_photoBox">${editPhotoHTML(d)}</div>`
+    +EDIT_FIELDS.map(([k,lbl])=>`
+      <div class="field"><label class="fl">${lbl}</label>
+      <input type="text" id="ed_${k}" value="${esc(d[k]||'')}" class="${k.endsWith('Ar')?'ar':''}"></div>`).join('')
+    +expSection
+    +`<div class="field"><label class="fl">Title</label>
+        <select id="ed_title"><option ${d.title==='Dr.'?'selected':''}>Dr.</option><option ${d.title==='Prof.'?'selected':''}>Prof.</option><option value="" ${!d.title?'selected':''}>None</option></select></div>
+      <div class="field"><label class="fl">Locations</label>
+        <div class="chips" id="ed_locs">${LOCATIONS.map(l=>`<div class="chip ${d.locations.includes(l.en)?'sel':''}" data-edloc="${esc(l.en)}" onclick="this.classList.toggle('sel')">${l.en}</div>`).join('')}</div></div>`;
+  renderEditExpChips();
+  // restore Arabic if user previously edited it manually (preserve it on open)
+  if(d.expAr && (!Array.isArray(d.expertise) || d.expertise.length===0)){ $('ed_expAr').value=d.expAr; }
+  $('editModal').classList.add('open');
+}
+function closeModal(){$('editModal').classList.remove('open');editingId=null}
+async function saveEdit(){
+  const d=allDoctors.find(x=>x.id===editingId);if(!d)return;
+  EDIT_FIELDS.forEach(([k])=>{ d[k]=$('ed_'+k).value });
+  d.title=$('ed_title').value;
+  d.locations=[...document.querySelectorAll('#ed_locs .chip.sel')].map(c=>c.dataset.edloc);
+  d.expertise=editExp.map(x=>({...x}));
+  d.expEn=editExp.map(x=>x.en).join(', ');
+  d.expAr=$('ed_expAr').value || editExp.map(x=>x.ar).join('، ');
+  await saveDoctor(d);
+  closeModal();renderLog();renderGallery();toast('Saved ✓');
+}
+
+/* ============ BOOT ============ */
+/* Auto-detect a Railway backend serving this HTML at the same origin.
+   If the page was loaded over http(s) and no API is configured yet, probe /health.
+   When it responds OK, we use this same origin as the backend transparently. */
+async function autoDetectRailway(){
+  if(DB_CONFIG.RAILWAY_API || DB_CONFIG.SUPABASE_URL) return;          // user already configured
+  if(!/^https?:$/.test(location.protocol)) return;                     // file://, ignore
+  try{
+    const res=await fetch(location.origin+'/api/onboarding/health',{cache:'no-store'});
+    if(!res.ok) return;
+    const j=await res.json().catch(()=>({}));
+    if(j && j.ok){
+      DB_CONFIG.RAILWAY_API=location.origin;
+      console.log('✓ Auto-connected to Railway backend at',location.origin);
+    }
+  }catch(e){ /* not a backend deploy — ignore */ }
+}
+
+(async()=>{
+  try{ await loadDBConfig(); }catch(e){}
+  try{ await autoDetectRailway(); }catch(e){}
+  try{ await loadAppSettings(); }catch(e){}
+  init();
+})();
+</script>
+</body>
+</html>
